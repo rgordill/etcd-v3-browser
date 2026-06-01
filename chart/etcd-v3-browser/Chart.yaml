@@ -1,0 +1,10 @@
+apiVersion: v2
+name: etcd-v3-browser
+description: A PatternFly-based web browser for etcd v3 key-value stores
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - etcd
+  - browser
+  - patternfly

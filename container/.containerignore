@@ -1,0 +1,16 @@
+.git
+.gitignore
+*.md
+LICENSE
+.github
+.vscode
+.idea
+*.log
+src/node_modules
+src/frontend/node_modules
+src/frontend/build
+__pycache__
+.env
+.env.local
+chart/
+hack/

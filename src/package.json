@@ -1,0 +1,25 @@
+{
+  "name": "etcd-v3-browser",
+  "version": "1.0.0",
+  "description": "Web browser for etcd v3 key-value store with PatternFly UI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "dev:server": "node server.js",
+    "dev:frontend": "cd frontend && npm start"
+  },
+  "keywords": [
+    "etcd",
+    "browser",
+    "patternfly"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "etcd3": "^1.1.2",
+    "express": "^4.21.2",
+    "js-yaml": "^4.2.0",
+    "protobufjs": "^8.5.0"
+  }
+}

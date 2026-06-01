@@ -1,0 +1,38 @@
+etcd v3 Browser
+Copyright 2026 etcd-v3-browser contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+================================================================================
+Third-Party Notices
+================================================================================
+
+This application bundles or depends on open-source software. See
+docs/LICENSE-COMPLIANCE.md for a license audit summary. Major components:
+
+  - React, react-dom — MIT
+  - Express, cors — MIT
+  - etcd3 — Apache-2.0
+  - @grpc/grpc-js — Apache-2.0
+  - protobufjs — BSD-3-Clause
+  - js-yaml — MIT
+  - PatternFly (@patternfly/*) — Apache-2.0
+  - prism-react-renderer — MIT
+
+Vendored protobuf schemas (Apache License 2.0):
+
+  - kubernetes/api and kubernetes/apimachinery — src/protos/k8s.io/
+  - openshift/api — src/protos/openshift.io/api/
+
+Kubernetes and OpenShift are trademarks of their respective owners.
+This project is not affiliated with etcd, CNCF, Kubernetes, or OpenShift.

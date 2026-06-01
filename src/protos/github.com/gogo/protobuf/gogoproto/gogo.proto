@@ -1,0 +1,9 @@
+syntax = "proto2";
+package gogoproto;
+import "google/protobuf/descriptor.proto";
+option go_package = "github.com/gogo/protobuf/gogoproto";
+extend google.protobuf.EnumOptions          { optional bool goproto_enum_prefix = 62001; optional bool enum_stringer = 62021; }
+extend google.protobuf.EnumValueOptions     { optional string enumvalue_customname = 66001; }
+extend google.protobuf.FileOptions          { optional bool goproto_getters_all = 63001; optional bool marshaler_all = 63017; optional bool unmarshaler_all = 63019; optional bool sizer_all = 63020; optional bool goproto_enum_prefix_all = 63002; optional bool goproto_stringer_all = 63003; optional bool stringer_all = 63004; optional bool gostring_all = 63006; optional bool equal_all = 63013; optional bool verbose_equal_all = 63014; optional bool goproto_unrecognized_all = 63026; optional bool goproto_unkeyed_all = 63034; optional bool goproto_sizecache_all = 63035; }
+extend google.protobuf.MessageOptions       { optional bool goproto_stringer = 64003; optional bool verbose_equal = 64004; optional bool stringer = 64005; optional bool gostring = 64006; optional bool equal = 64013; optional bool marshaler = 64017; optional bool unmarshaler = 64019; optional bool sizer = 64020; optional bool goproto_unrecognized = 64026; optional bool goproto_unkeyed = 64034; optional bool goproto_sizecache = 64035; }
+extend google.protobuf.FieldOptions         { optional bool nullable = 65001; optional bool embed = 65002; optional string customtype = 65003; optional string casttype = 65007; optional string castkey = 65008; optional string castvalue = 65009; optional string customname = 65004; optional bool stdtime = 65010; optional bool stdduration = 65011; }

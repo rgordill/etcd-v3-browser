@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Production / local builds
+src/frontend/build/
+dist/
+out/
+
+# Frontend (Create React App)
+src/frontend/.pnp
+src/frontend/.pnp.js
+src/frontend/coverage/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.log
+
+# Test and tool caches
+coverage/
+.nyc_output/
+.cache/
+.eslintcache
+*.tsbuildinfo
+
+# IDE and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Optional local overrides (uncomment if you use them)
+# *.local
