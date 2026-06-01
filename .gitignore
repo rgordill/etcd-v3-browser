@@ -41,6 +41,6 @@ coverage/
 # OS
 .DS_Store
 Thumbs.db
-
 # Optional local overrides (uncomment if you use them)
 # *.local
+

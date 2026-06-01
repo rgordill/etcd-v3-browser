@@ -67,7 +67,7 @@ Open **http://localhost:3001** in your browser.
 3. Enter the **port** (usually `2379`).
 4. Click **Connect**.
 
-![Connect to an etcd endpoint](images/etcd-connect.png)
+![Connect to an etcd endpoint](../images/etcd-connect.png)
 
 If the connection succeeds, the masthead shows a green badge with your endpoint and
 the etcd version. If it fails, check the error message, firewall rules, TLS settings,

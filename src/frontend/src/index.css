@@ -1,0 +1,282 @@
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Lock the page to the viewport */
+.pf-v6-c-page {
+  height: 100vh !important;
+  max-height: 100vh !important;
+}
+
+.pf-v6-c-page__main {
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  flex: 1 !important;
+}
+
+/* The main container PF6 wraps around __main.
+   PF6 Page uses CSS Grid. The container defaults to align-self: start,
+   which makes it shrink to content height instead of filling the row. */
+.pf-v6-c-page__main-container {
+  align-self: stretch !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  min-height: 0 !important;
+}
+
+/* Keep masthead from growing */
+.pf-v6-c-masthead {
+  flex-shrink: 0;
+}
+
+/* The main content section: fill remaining space, never overflow itself */
+.etcd-main-section {
+  overflow: hidden !important;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Override PF6 PageSection padding for tighter layout */
+.etcd-main-section.pf-v6-c-page__main-section {
+  padding: var(--pf-t--global--spacer--sm) !important;
+}
+
+/* PF6 PageSection injects a .pf-v6-c-page__main-body wrapper between
+   the <section> and our content. It defaults to display:block / flex:0 1 auto,
+   breaking the flex chain. Force it to participate. */
+.etcd-main-section > .pf-v6-c-page__main-body {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Browser panel: two-column flex filling the section */
+.etcd-browser {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.etcd-browser__columns {
+  flex: 1;
+  display: flex;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+/* Each column: a flex column that stretches its Card to fill */
+.etcd-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.etcd-col--keys {
+  width: 380px;
+  min-width: 260px;
+  flex-shrink: 0;
+}
+
+.etcd-col--value {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Card within a column: stretch to fill, scroll body */
+.etcd-col > .pf-v6-c-card {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.etcd-col > .pf-v6-c-card > .pf-v6-c-card__title {
+  flex-shrink: 0 !important;
+}
+
+.etcd-col > .pf-v6-c-card > .pf-v6-c-card__body {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Scrollbar styling */
+.etcd-col > .pf-v6-c-card > .pf-v6-c-card__body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.etcd-col > .pf-v6-c-card > .pf-v6-c-card__body::-webkit-scrollbar-track {
+  background: var(--pf-t--global--background--color--secondary--default, #f0f0f0);
+  border-radius: 4px;
+}
+
+.etcd-col > .pf-v6-c-card > .pf-v6-c-card__body::-webkit-scrollbar-thumb {
+  background: var(--pf-t--global--border--color--default, #c0c0c0);
+  border-radius: 4px;
+}
+
+.etcd-col > .pf-v6-c-card > .pf-v6-c-card__body::-webkit-scrollbar-thumb:hover {
+  background: var(--pf-t--global--color--nonstatus--blue--default, #0066cc);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .etcd-col > .pf-v6-c-card > .pf-v6-c-card__body {
+    scrollbar-width: thin;
+    scrollbar-color:
+      var(--pf-t--global--border--color--default, #c0c0c0)
+      var(--pf-t--global--background--color--secondary--default, #f0f0f0);
+  }
+}
+
+/* Disclaimer footer */
+.etcd-disclaimer {
+  flex-shrink: 0;
+  padding: var(--pf-t--global--spacer--xs) var(--pf-t--global--spacer--md);
+  border-top: 1px solid var(--pf-t--global--border--color--default);
+  font-size: 0.75rem;
+  color: var(--pf-t--global--text--color--subtle);
+  text-align: center;
+}
+
+/* Masthead: keep items on one line, allow middle section to shrink */
+.etcd-masthead-content {
+  width: 100%;
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--pf-t--global--spacer--sm) !important;
+  flex-wrap: nowrap !important;
+  overflow: hidden;
+}
+
+.etcd-masthead-content__status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.etcd-masthead-content__status .pf-v6-c-flex {
+  flex-wrap: nowrap !important;
+}
+
+.etcd-masthead-brand {
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--pf-t--global--spacer--sm) !important;
+  flex-wrap: nowrap !important;
+}
+
+.etcd-masthead-brand__title {
+  white-space: nowrap;
+  color: var(--pf-t--global--color--inverse--100);
+}
+
+/* Collapsible JSON / YAML structure viewer */
+.etcd-structure__toolbar {
+  border-bottom: 1px solid var(--pf-t--global--border--color--default);
+}
+
+.etcd-structure__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-height: 1.5em;
+}
+
+.etcd-structure__block {
+  display: block;
+}
+
+.etcd-structure__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--pf-t--global--text--color--subtle);
+  cursor: pointer;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.etcd-structure__toggle:hover {
+  color: var(--pf-t--global--text--color--regular);
+}
+
+.etcd-structure__toggle--placeholder {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.etcd-structure__toggle svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.etcd-structure__key {
+  color: var(--pf-t--global--color--nonstatus--red--default, #cf222e);
+}
+
+.etcd-structure__string {
+  color: var(--pf-t--global--color--nonstatus--green--default, #116329);
+}
+
+.etcd-structure__number {
+  color: var(--pf-t--global--color--nonstatus--blue--default, #0550ae);
+}
+
+.etcd-structure__boolean {
+  color: var(--pf-t--global--color--nonstatus--purple--default, #8250df);
+}
+
+.etcd-structure__null {
+  color: var(--pf-t--global--text--color--subtle);
+  font-style: italic;
+}
+
+.etcd-structure__punct,
+.etcd-structure__comma {
+  color: var(--pf-t--global--text--color--regular);
+}
+
+.etcd-structure__ellipsis {
+  color: var(--pf-t--global--text--color--subtle);
+  font-style: italic;
+}
+
+.etcd-structure__yaml-dash {
+  color: var(--pf-t--global--text--color--subtle);
+}
