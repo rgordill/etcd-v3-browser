@@ -12,6 +12,8 @@ OpenShift API objects.
 > the [Linux Foundation](https://www.linuxfoundation.org/), Kubernetes, or OpenShift.
 > "etcd" is a registered trademark of The Linux Foundation. This tool is an
 > independent, community-built utility.
+> 
+> **Warning:** Connecting to a live etcd cluster can impact performance. It is recommended to load an snapshot into an staloned etcd server. Use at your own risk.
 
 **New here?** Follow the step-by-step guide in [docs/quickstart.md](docs/quickstart.md).
 

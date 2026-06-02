@@ -2,7 +2,7 @@
 
 const { Router } = require('express');
 const config = require('../config');
-const { getClient } = require('../services/etcd-client');
+const { getClient, storeTlsConfig } = require('../services/etcd-client');
 const { encodeValue } = require('../services/value-decoder');
 const requireEndpoint = require('../middleware/require-endpoint');
 
@@ -12,8 +12,12 @@ router.get('/config', (_req, res) => {
   res.json({ defaultEndpoint: config.defaultEtcdEndpoint });
 });
 
-router.get('/connect', requireEndpoint, async (req, res) => {
+async function handleConnect(req, res) {
+  const { tls } = req.body || {};
   try {
+    if (tls) {
+      storeTlsConfig(req.etcdEndpoint, tls);
+    }
     const client = getClient(req.etcdEndpoint);
     const status = await client.maintenance.status();
     res.json({
@@ -29,7 +33,10 @@ router.get('/connect', requireEndpoint, async (req, res) => {
       error: err.message,
     });
   }
-});
+}
+
+router.get('/connect', requireEndpoint, handleConnect);
+router.post('/connect', requireEndpoint, handleConnect);
 
 router.get('/keys', requireEndpoint, async (req, res) => {
   const prefix = req.query.prefix || '';

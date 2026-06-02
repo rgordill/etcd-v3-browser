@@ -47,6 +47,7 @@ import {
   DropdownList,
   Tooltip,
 } from '@patternfly/react-core';
+import { PemFileField } from './PemFileField';
 import {
   FolderIcon,
   FolderOpenIcon,
@@ -71,7 +72,9 @@ const etcdLogoLightUrl = `${process.env.PUBLIC_URL}/etcd-logo.svg`;
 const etcdLogoDarkUrl = `${process.env.PUBLIC_URL}/etcd-logo-dark.svg`;
 
 const DISCLAIMER_TEXT =
-  'This project is not official, affiliated with, or endorsed by the etcd project, the CNCF, or the Linux Foundation.';
+  'This project is not official, affiliated with, or endorsed by the etcd project, the CNCF, or the Linux Foundation. '
+  + 'Connecting to a live etcd cluster can impact performance. It is recommended to load an snapshot into an staloned etcd server. '
+  + 'Use at your own risk';
 
 interface EtcdEntry {
   key: string;
@@ -83,6 +86,14 @@ interface ConnectionInfo {
   endpoint: string;
   version: string;
   dbSize: string;
+}
+
+interface TlsOptions {
+  skipTlsVerify: boolean;
+  serverCa: string;
+  clientAuth: boolean;
+  clientCert: string;
+  clientKey: string;
 }
 
 interface K8sResource {
@@ -111,8 +122,15 @@ async function fetchConfig(): Promise<{ defaultEndpoint: string }> {
   return res.json();
 }
 
-async function connectToEtcd(endpoint: string): Promise<ConnectionInfo> {
-  const res = await fetch(`${API_BASE}/api/connect?${endpointParam(endpoint)}`);
+async function connectToEtcd(endpoint: string, tlsOptions?: TlsOptions): Promise<ConnectionInfo> {
+  const res = await fetch(`${API_BASE}/api/connect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpoint,
+      ...(tlsOptions && { tls: tlsOptions }),
+    }),
+  });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || `Connection failed (${res.status})`);
   return { endpoint: data.endpoint, version: data.version, dbSize: data.dbSize };
@@ -359,6 +377,13 @@ function App() {
   const [port, setPort] = useState('2379');
   const [protocol, setProtocol] = useState('http');
   const [protocolOpen, setProtocolOpen] = useState(false);
+  const [skipTlsVerify, setSkipTlsVerify] = useState(false);
+  const [skipTlsOpen, setSkipTlsOpen] = useState(false);
+  const [serverCa, setServerCa] = useState('');
+  const [clientAuth, setClientAuth] = useState(false);
+  const [clientAuthOpen, setClientAuthOpen] = useState(false);
+  const [clientCert, setClientCert] = useState('');
+  const [clientKey, setClientKey] = useState('');
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [recentEndpoints, setRecentEndpoints] = useState<string[]>([]);
   const configLoaded = useRef(false);
@@ -414,8 +439,17 @@ function App() {
     const ep = currentEndpoint;
     setConnecting(true);
     setConnectionError(null);
+
+    const tlsOptions = protocol === 'https' ? {
+      skipTlsVerify,
+      serverCa,
+      clientAuth,
+      clientCert,
+      clientKey,
+    } : undefined;
+
     try {
-      const info = await connectToEtcd(ep);
+      const info = await connectToEtcd(ep, tlsOptions);
       setConnection(info);
       addRecentEndpoint(ep);
       setTreeData([]);
@@ -428,7 +462,7 @@ function App() {
     } finally {
       setConnecting(false);
     }
-  }, [host, currentEndpoint, addRecentEndpoint]);
+  }, [host, currentEndpoint, addRecentEndpoint, protocol, skipTlsVerify, serverCa, clientAuth, clientCert, clientKey]);
 
   const handleDisconnect = useCallback(() => {
     setConnection(null);
@@ -636,6 +670,114 @@ function App() {
               </HelperTextItem>
             </HelperText>
           </FormGroup>
+
+          {protocol === 'https' && (
+            <>
+              <FormGroup label="Skip TLS Verify" fieldId="skip-tls-verify">
+                <Select
+                  id="skip-tls-select"
+                  isOpen={skipTlsOpen}
+                  selected={skipTlsVerify ? 'true' : 'false'}
+                  onSelect={(_event, value) => {
+                    setSkipTlsVerify(value === 'true');
+                    setSkipTlsOpen(false);
+                  }}
+                  onOpenChange={setSkipTlsOpen}
+                  toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                    <MenuToggle
+                      ref={toggleRef}
+                      onClick={() => setSkipTlsOpen(!skipTlsOpen)}
+                      isExpanded={skipTlsOpen}
+                      style={{ width: '100px' }}
+                    >
+                      {skipTlsVerify ? 'true' : 'false'}
+                    </MenuToggle>
+                  )}
+                >
+                  <SelectOption value="false">false</SelectOption>
+                  <SelectOption value="true">true</SelectOption>
+                </Select>
+                <HelperText>
+                  <HelperTextItem>
+                    If true, the client will not validate the server certificate.
+                  </HelperTextItem>
+                </HelperText>
+              </FormGroup>
+
+              {!skipTlsVerify && (
+                <FormGroup label="Server CA Certificate (optional)" fieldId="server-ca">
+                  <PemFileField
+                    id="server-ca"
+                    value={serverCa}
+                    onChange={setServerCa}
+                    placeholder="Upload or paste PEM-encoded CA certificate (.pem, .crt, .cer)"
+                    browseButtonText="Load CA file"
+                  />
+                  <HelperText>
+                    <HelperTextItem>
+                      Optional PEM-encoded CA certificate to trust for server verification. If empty, system trust store is used.
+                    </HelperTextItem>
+                  </HelperText>
+                </FormGroup>
+              )}
+
+              <FormGroup label="Client Authentication" fieldId="client-auth">
+                <Select
+                  id="client-auth-select"
+                  isOpen={clientAuthOpen}
+                  selected={clientAuth ? 'true' : 'false'}
+                  onSelect={(_event, value) => {
+                    setClientAuth(value === 'true');
+                    setClientAuthOpen(false);
+                  }}
+                  onOpenChange={setClientAuthOpen}
+                  toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                    <MenuToggle
+                      ref={toggleRef}
+                      onClick={() => setClientAuthOpen(!clientAuthOpen)}
+                      isExpanded={clientAuthOpen}
+                      style={{ width: '100px' }}
+                    >
+                      {clientAuth ? 'true' : 'false'}
+                    </MenuToggle>
+                  )}
+                >
+                  <SelectOption value="false">false</SelectOption>
+                  <SelectOption value="true">true</SelectOption>
+                </Select>
+                <HelperText>
+                  <HelperTextItem>
+                    Enable mutual TLS (mTLS) client certificate authentication.
+                  </HelperTextItem>
+                </HelperText>
+              </FormGroup>
+
+              {clientAuth && (
+                <>
+                  <FormGroup label="Client Certificate" isRequired fieldId="client-cert">
+                    <PemFileField
+                      id="client-cert"
+                      value={clientCert}
+                      onChange={setClientCert}
+                      placeholder="Upload or paste PEM client certificate (.pem, .crt)"
+                      browseButtonText="Load certificate"
+                      isRequired
+                    />
+                  </FormGroup>
+                  <FormGroup label="Client Key" isRequired fieldId="client-key">
+                    <PemFileField
+                      id="client-key"
+                      value={clientKey}
+                      onChange={setClientKey}
+                      placeholder="Upload or paste PEM private key (.pem, .key)"
+                      browseButtonText="Load private key"
+                      isRequired
+                    />
+                  </FormGroup>
+                </>
+              )}
+            </>
+          )}
 
           {connectionError && (
             <Alert
