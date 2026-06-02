@@ -64,6 +64,7 @@ import {
   AdjustIcon,
 } from '@patternfly/react-icons';
 import { SyntaxCodeBlock } from './SyntaxCodeBlock';
+import { CopyButton } from './CopyButton';
 import { jsonToYaml, parseJsonText } from './value-format';
 import { useTheme, ThemeChoice } from './useTheme';
 import { ThemeContext } from './ThemeContext';
@@ -73,7 +74,7 @@ const etcdLogoDarkUrl = `${process.env.PUBLIC_URL}/etcd-logo-dark.svg`;
 
 const DISCLAIMER_TEXT =
   'This project is not official, affiliated with, or endorsed by the etcd project, the CNCF, or the Linux Foundation. '
-  + 'Connecting to a live etcd cluster can impact performance. It is recommended to load an snapshot into an staloned etcd server. '
+  + 'Connecting to a live etcd cluster can impact performance. It is recommended to load a snapshot into an staloned etcd server. '
   + 'Use at your own risk';
 
 interface EtcdEntry {
@@ -209,6 +210,59 @@ function defaultTextTab(value: string): string {
   return parseJsonText(value) ? 'yaml' : 'text';
 }
 
+function ValueMetaBar({ copyText, children }: { copyText: string; children: React.ReactNode }) {
+  return (
+    <Flex
+      gap={{ default: 'gapSm' }}
+      alignItems={{ default: 'alignItemsCenter' }}
+      style={{ marginBottom: 'var(--pf-t--global--spacer--sm)' }}
+    >
+      {children}
+      <FlexItem style={{ marginLeft: 'auto' }}>
+        <CopyButton text={copyText} />
+      </FlexItem>
+    </Flex>
+  );
+}
+
+function textFormatCopyContent(
+  activeTab: string,
+  value: string,
+  yamlText: string,
+  jsonFormatted: string,
+): string {
+  switch (activeTab) {
+    case 'yaml':
+      return yamlText;
+    case 'json':
+      return jsonFormatted;
+    case 'raw':
+    case 'text':
+    default:
+      return value;
+  }
+}
+
+function binaryFormatCopyContent(
+  activeTab: string,
+  rawBase64: string,
+  hexDump: string,
+  k8s?: K8sResource,
+): string {
+  switch (activeTab) {
+    case 'yaml':
+      return k8s?.yaml ?? hexDump;
+    case 'json':
+      return k8s?.json ?? rawBase64;
+    case 'hex':
+      return hexDump;
+    case 'base64':
+      return rawBase64;
+    default:
+      return hexDump;
+  }
+}
+
 function TextValueDisplay({ value }: { value: string }) {
   const jsonInfo = useMemo(() => parseJsonText(value), [value]);
   const yamlText = useMemo(
@@ -221,17 +275,24 @@ function TextValueDisplay({ value }: { value: string }) {
     setActiveTab(defaultTextTab(value));
   }, [value]);
 
+  const copyText = useMemo(
+    () => (jsonInfo
+      ? textFormatCopyContent(activeTab, value, yamlText, jsonInfo.formatted)
+      : value),
+    [activeTab, value, yamlText, jsonInfo],
+  );
+
   if (!jsonInfo) {
     return (
       <>
-        <Flex gap={{ default: 'gapSm' }} style={{ marginBottom: 'var(--pf-t--global--spacer--sm)' }}>
+        <ValueMetaBar copyText={copyText}>
           <FlexItem>
             <Label isCompact color="green">Text</Label>
           </FlexItem>
           <FlexItem>
             <Label isCompact>{formatSize(value.length)}</Label>
           </FlexItem>
-        </Flex>
+        </ValueMetaBar>
         <SyntaxCodeBlock code={value} language="text" />
       </>
     );
@@ -239,7 +300,7 @@ function TextValueDisplay({ value }: { value: string }) {
 
   return (
     <>
-      <Flex gap={{ default: 'gapSm' }} style={{ marginBottom: 'var(--pf-t--global--spacer--sm)' }}>
+      <ValueMetaBar copyText={copyText}>
         <FlexItem>
           <Label isCompact color="green">Text</Label>
         </FlexItem>
@@ -249,7 +310,7 @@ function TextValueDisplay({ value }: { value: string }) {
         <FlexItem>
           <Label isCompact>{formatSize(value.length)}</Label>
         </FlexItem>
-      </Flex>
+      </ValueMetaBar>
       <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(String(key))} isBox>
         <Tab eventKey="yaml" title={<TabTitleText>YAML</TabTitleText>}>
           <div style={{ marginTop: 'var(--pf-t--global--spacer--sm)' }}>
@@ -271,40 +332,23 @@ function TextValueDisplay({ value }: { value: string }) {
   );
 }
 
-function ValueDisplay({ result }: { result: ValueResult }) {
+function BinaryValueDisplay({ result }: { result: ValueResult & { value: string } }) {
   const k8s = result.k8sResource;
-  const [activeTab, setActiveTab] = useState(() =>
-    result.encoding === 'text' && result.value
-      ? defaultTextTab(result.value)
-      : defaultBinaryTab(result),
+  const [activeTab, setActiveTab] = useState(() => defaultBinaryTab(result));
+  const bytes = useMemo(() => base64ToBytes(result.value), [result.value]);
+  const hexDump = useMemo(() => formatHexDump(bytes), [bytes]);
+  const copyText = useMemo(
+    () => binaryFormatCopyContent(activeTab, result.value, hexDump, k8s),
+    [activeTab, result.value, hexDump, k8s],
   );
 
   useEffect(() => {
-    if (result.value === null) return;
-    setActiveTab(
-      result.encoding === 'text'
-        ? defaultTextTab(result.value)
-        : defaultBinaryTab(result),
-    );
+    setActiveTab(defaultBinaryTab(result));
   }, [result]);
-
-  if (result.value === null) {
-    return (
-      <EmptyState headingLevel="h4" icon={KeyIcon} titleText="Key has no value">
-        <EmptyStateBody>This key exists but has an empty value.</EmptyStateBody>
-      </EmptyState>
-    );
-  }
-
-  if (result.encoding === 'text') {
-    return <TextValueDisplay value={result.value} />;
-  }
-
-  const bytes = base64ToBytes(result.value);
 
   return (
     <>
-      <Flex gap={{ default: 'gapSm' }} style={{ marginBottom: 'var(--pf-t--global--spacer--sm)' }}>
+      <ValueMetaBar copyText={copyText}>
         <FlexItem>
           <Label isCompact color="orange">Binary</Label>
         </FlexItem>
@@ -321,7 +365,7 @@ function ValueDisplay({ result }: { result: ValueResult }) {
             </FlexItem>
           </>
         )}
-      </Flex>
+      </ValueMetaBar>
       <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(String(key))} isBox>
         {k8s && (
           <Tab eventKey="yaml" title={<TabTitleText>YAML</TabTitleText>}>
@@ -343,7 +387,7 @@ function ValueDisplay({ result }: { result: ValueResult }) {
               <CodeBlockCode
                 style={{ fontFamily: 'var(--pf-t--global--font--family--mono)', fontSize: '0.8125rem', lineHeight: 1.5 }}
               >
-                {formatHexDump(bytes)}
+                {hexDump}
               </CodeBlockCode>
             </CodeBlock>
           </div>
@@ -358,6 +402,22 @@ function ValueDisplay({ result }: { result: ValueResult }) {
       </Tabs>
     </>
   );
+}
+
+function ValueDisplay({ result }: { result: ValueResult }) {
+  if (result.value === null) {
+    return (
+      <EmptyState headingLevel="h4" icon={KeyIcon} titleText="Key has no value">
+        <EmptyStateBody>This key exists but has an empty value.</EmptyStateBody>
+      </EmptyState>
+    );
+  }
+
+  if (result.encoding === 'text') {
+    return <TextValueDisplay value={result.value} />;
+  }
+
+  return <BinaryValueDisplay result={{ ...result, value: result.value }} />;
 }
 
 const THEME_LABELS: Record<ThemeChoice, { icon: React.ReactNode; label: string }> = {
