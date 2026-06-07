@@ -46,6 +46,8 @@ import {
   DropdownItem,
   DropdownList,
   Tooltip,
+  Popover,
+  FormGroupLabelHelp,
 } from '@patternfly/react-core';
 import { PemFileField } from './PemFileField';
 import {
@@ -676,7 +678,19 @@ function App() {
             handleConnect();
           }}
         >
-          <FormGroup label="Endpoint" isRequired fieldId="etcd-endpoint">
+          <FormGroup
+            label="Endpoint"
+            isRequired
+            fieldId="etcd-endpoint"
+            labelHelp={
+              <Popover
+                headerContent="Endpoint"
+                bodyContent="The full address of the etcd server to connect to: protocol (http or https), hostname or IP address, and port number. The default etcd client port is 2379."
+              >
+                <FormGroupLabelHelp aria-label="More info for endpoint field" />
+              </Popover>
+            }
+          >
             <InputGroup>
               <InputGroupItem>
                 <Select
@@ -733,7 +747,18 @@ function App() {
 
           {protocol === 'https' && (
             <>
-              <FormGroup label="Skip TLS Verify" fieldId="skip-tls-verify">
+              <FormGroup
+                label="Skip TLS Verify"
+                fieldId="skip-tls-verify"
+                labelHelp={
+                  <Popover
+                    headerContent="Skip TLS Verify"
+                    bodyContent="When enabled, the client will not validate the server's TLS certificate. This is useful for self-signed certificates or development environments, but should be avoided in production as it disables protection against man-in-the-middle attacks."
+                  >
+                    <FormGroupLabelHelp aria-label="More info for skip TLS verify field" />
+                  </Popover>
+                }
+              >
                 <Select
                   id="skip-tls-select"
                   isOpen={skipTlsOpen}
@@ -765,7 +790,18 @@ function App() {
               </FormGroup>
 
               {!skipTlsVerify && (
-                <FormGroup label="Server CA Certificate (optional)" fieldId="server-ca">
+                <FormGroup
+                  label="Server CA Certificate (optional)"
+                  fieldId="server-ca"
+                  labelHelp={
+                    <Popover
+                      headerContent="Server CA Certificate"
+                      bodyContent="A PEM-encoded Certificate Authority (CA) certificate used to verify the etcd server's identity. Provide this when the server uses a certificate signed by a private or internal CA not present in the system trust store. If left empty, the system's default trusted certificates are used."
+                    >
+                      <FormGroupLabelHelp aria-label="More info for server CA certificate field" />
+                    </Popover>
+                  }
+                >
                   <PemFileField
                     id="server-ca"
                     value={serverCa}
@@ -781,7 +817,18 @@ function App() {
                 </FormGroup>
               )}
 
-              <FormGroup label="Client Authentication" fieldId="client-auth">
+              <FormGroup
+                label="Client Authentication"
+                fieldId="client-auth"
+                labelHelp={
+                  <Popover
+                    headerContent="Client Authentication"
+                    bodyContent="Enable mutual TLS (mTLS) authentication. When enabled, the client presents its own certificate and private key to the server, proving its identity. This is required when the etcd server is configured to verify client certificates."
+                  >
+                    <FormGroupLabelHelp aria-label="More info for client authentication field" />
+                  </Popover>
+                }
+              >
                 <Select
                   id="client-auth-select"
                   isOpen={clientAuthOpen}
@@ -814,7 +861,19 @@ function App() {
 
               {clientAuth && (
                 <>
-                  <FormGroup label="Client Certificate" isRequired fieldId="client-cert">
+                  <FormGroup
+                    label="Client Certificate"
+                    isRequired
+                    fieldId="client-cert"
+                    labelHelp={
+                      <Popover
+                        headerContent="Client Certificate"
+                        bodyContent="A PEM-encoded X.509 certificate that identifies this client to the etcd server. It must be signed by a CA that the server trusts. This is the public part of the client's mTLS credentials."
+                      >
+                        <FormGroupLabelHelp aria-label="More info for client certificate field" />
+                      </Popover>
+                    }
+                  >
                     <PemFileField
                       id="client-cert"
                       value={clientCert}
@@ -824,7 +883,19 @@ function App() {
                       isRequired
                     />
                   </FormGroup>
-                  <FormGroup label="Client Key" isRequired fieldId="client-key">
+                  <FormGroup
+                    label="Client Key"
+                    isRequired
+                    fieldId="client-key"
+                    labelHelp={
+                      <Popover
+                        headerContent="Client Key"
+                        bodyContent="A PEM-encoded private key corresponding to the client certificate. This key is used to prove ownership of the client certificate during the TLS handshake. Keep this file secure — it should never be shared or exposed publicly."
+                      >
+                        <FormGroupLabelHelp aria-label="More info for client key field" />
+                      </Popover>
+                    }
+                  >
                     <PemFileField
                       id="client-key"
                       value={clientKey}
