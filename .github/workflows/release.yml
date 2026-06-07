@@ -12,6 +12,7 @@ permissions:
 env:
   REGISTRY: quay.io
   IMAGE_NAME: rgordill/etcd-v3-browser
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   test:
@@ -22,7 +23,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: |
             src/package-lock.json
