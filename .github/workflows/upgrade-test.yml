@@ -1,0 +1,144 @@
+name: Upgrade Test
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  upgrade-test:
+    name: Test with Latest Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install current backend dependencies
+        working-directory: src
+        run: npm ci
+
+      - name: Upgrade backend dependencies to latest
+        working-directory: src
+        run: |
+          npm update --save
+          npm audit fix || true
+
+      - name: Record backend dependency changes
+        id: backend-changes
+        working-directory: src
+        run: |
+          DIFF=$(git diff package.json package-lock.json 2>/dev/null || echo "No changes")
+          {
+            echo "DIFF<<EOF"
+            echo "$DIFF"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run backend tests
+        id: backend-tests
+        working-directory: src
+        continue-on-error: true
+        run: npm test 2>&1 | tee /tmp/backend-test-output.txt
+
+      - name: Install current frontend dependencies
+        working-directory: src/frontend
+        run: npm ci
+
+      - name: Upgrade frontend dependencies to latest
+        working-directory: src/frontend
+        run: |
+          npm update --save
+          npm audit fix || true
+
+      - name: Record frontend dependency changes
+        id: frontend-changes
+        working-directory: src/frontend
+        run: |
+          DIFF=$(git diff package.json package-lock.json 2>/dev/null || echo "No changes")
+          {
+            echo "DIFF<<EOF"
+            echo "$DIFF"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run frontend tests
+        id: frontend-tests
+        working-directory: src/frontend
+        continue-on-error: true
+        run: |
+          CI=true npm test -- --watchAll=false 2>&1 | tee /tmp/frontend-test-output.txt
+        env:
+          CI: true
+
+      - name: Build frontend
+        id: frontend-build
+        working-directory: src/frontend
+        continue-on-error: true
+        run: npm run build 2>&1 | tee /tmp/frontend-build-output.txt
+
+      - name: Generate upgrade report
+        id: report
+        run: |
+          BACKEND_STATUS="${{ steps.backend-tests.outcome }}"
+          FRONTEND_STATUS="${{ steps.frontend-tests.outcome }}"
+          BUILD_STATUS="${{ steps.frontend-build.outcome }}"
+          OVERALL="success"
+          if [ "$BACKEND_STATUS" = "failure" ] || [ "$FRONTEND_STATUS" = "failure" ] || [ "$BUILD_STATUS" = "failure" ]; then
+            OVERALL="failure"
+          fi
+
+          REPORT="## Upgrade Test Report - $(date -u +'%Y-%m-%d %H:%M UTC')\n\n"
+          REPORT+="### Results Summary\n\n"
+          REPORT+="| Check | Status |\n|-------|--------|\n"
+          REPORT+="| Backend Tests | ${BACKEND_STATUS} |\n"
+          REPORT+="| Frontend Tests | ${FRONTEND_STATUS} |\n"
+          REPORT+="| Frontend Build | ${BUILD_STATUS} |\n"
+          REPORT+="| **Overall** | **${OVERALL}** |\n\n"
+
+          if [ -f /tmp/backend-test-output.txt ] && [ "$BACKEND_STATUS" = "failure" ]; then
+            REPORT+="### Backend Test Output\n\n\`\`\`\n$(tail -30 /tmp/backend-test-output.txt)\n\`\`\`\n\n"
+          fi
+          if [ -f /tmp/frontend-test-output.txt ] && [ "$FRONTEND_STATUS" = "failure" ]; then
+            REPORT+="### Frontend Test Output\n\n\`\`\`\n$(tail -30 /tmp/frontend-test-output.txt)\n\`\`\`\n\n"
+          fi
+          if [ -f /tmp/frontend-build-output.txt ] && [ "$BUILD_STATUS" = "failure" ]; then
+            REPORT+="### Build Output\n\n\`\`\`\n$(tail -30 /tmp/frontend-build-output.txt)\n\`\`\`\n\n"
+          fi
+
+          echo "OVERALL=${OVERALL}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "REPORT<<EOF"
+            echo -e "$REPORT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create issue with report
+        if: steps.report.outputs.OVERALL == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `Upgrade Test Failure - ${new Date().toISOString().split('T')[0]}`;
+            const body = `${{ steps.report.outputs.REPORT }}`.replace(/\\n/g, '\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              assignees: ['rgordill'],
+              labels: ['upgrade-test', 'automated']
+            });
+
+      - name: Notify owner on success
+        if: steps.report.outputs.OVERALL == 'success'
+        run: echo "All upgrade tests passed successfully."
+
+      - name: Fail workflow if tests failed
+        if: steps.report.outputs.OVERALL == 'failure'
+        run: exit 1

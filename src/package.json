@@ -7,7 +7,10 @@
     "start": "node server.js",
     "build:frontend": "cd frontend && npm install && npm run build",
     "dev:server": "node server.js",
-    "dev:frontend": "cd frontend && npm start"
+    "dev:frontend": "cd frontend && npm start",
+    "test": "jest --coverage",
+    "test:ci": "jest --ci --coverage --reporters=default --reporters=jest-junit",
+    "test:frontend": "cd frontend && npm test -- --watchAll=false --coverage"
   },
   "keywords": [
     "etcd",
@@ -21,5 +24,13 @@
     "express": "^4.21.2",
     "js-yaml": "^4.2.0",
     "protobufjs": "^8.5.0"
+  },
+  "jest": {
+    "testPathIgnorePatterns": ["/node_modules/", "/frontend/"]
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-junit": "^16.0.0",
+    "supertest": "^7.1.0"
   }
 }

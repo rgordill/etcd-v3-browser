@@ -1,0 +1,14 @@
+{
+  "name": "etcd-v3-browser-docs",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Documentation site for etcd v3 Browser",
+  "scripts": {
+    "build": "node build.js",
+    "serve": "npx serve dist"
+  },
+  "devDependencies": {
+    "marked": "^15.0.0",
+    "marked-gfm-heading-id": "^4.1.0"
+  }
+}

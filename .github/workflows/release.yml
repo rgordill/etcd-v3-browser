@@ -1,0 +1,151 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: quay.io
+  IMAGE_NAME: rgordill/etcd-v3-browser
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            src/package-lock.json
+            src/frontend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: src
+        run: npm ci
+
+      - name: Run backend tests
+        working-directory: src
+        run: npm test
+
+      - name: Install frontend dependencies
+        working-directory: src/frontend
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: src/frontend
+        run: npm test -- --watchAll=false --coverage
+        env:
+          CI: true
+
+      - name: Build frontend
+        working-directory: src/frontend
+        run: npm run build
+
+      - name: Create release tarball
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          tar czf "etcd-v3-browser-${VERSION}.tar.gz" \
+            --exclude=node_modules \
+            --exclude=.git \
+            --exclude='src/frontend/node_modules' \
+            src/ container/ chart/ docs/ README.md LICENSE NOTICE
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-tarball
+          path: etcd-v3-browser-*.tar.gz
+
+  publish-image:
+    name: Build & Push Container Image
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Quay.io
+        run: |
+          echo "${{ secrets.REGISTRY_ROBOT_TOKEN }}" | \
+            docker login "${{ env.REGISTRY }}" \
+              --username "rgordill+github_actions" \
+              --password-stdin
+
+      - name: Build container image
+        run: |
+          docker build \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }} \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+            --build-arg APP_VERSION=${{ steps.version.outputs.VERSION }} \
+            --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+            --build-arg VCS_REF=${{ github.sha }} \
+            -f container/Containerfile .
+
+      - name: Push container image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  release:
+    name: Create GitHub Release
+    needs: [test, publish-image]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download tarball artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-tarball
+
+      - name: Generate release notes
+        id: changelog
+        run: |
+          PREVIOUS_TAG=$(git tag --sort=-creatordate | grep -v "^${GITHUB_REF_NAME}$" | head -n1)
+          if [ -z "$PREVIOUS_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" HEAD)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" "${PREVIOUS_TAG}..${GITHUB_REF_NAME}")
+          fi
+          {
+            echo "CHANGELOG<<EOF"
+            echo "$CHANGELOG"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat <<'EOF' > /tmp/release-body.md
+          ## etcd v3 Browser ${{ github.ref_name }}
+
+          ### Container Image
+
+          ```
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          ```
+
+          ### Changes
+
+          ${{ steps.changelog.outputs.CHANGELOG }}
+          EOF
+
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --notes-file /tmp/release-body.md \
+            etcd-v3-browser-*.tar.gz
