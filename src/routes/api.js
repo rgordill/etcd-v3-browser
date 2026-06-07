@@ -4,6 +4,15 @@ const { Router } = require('express');
 const config = require('../config');
 const { getClient, storeTlsConfig } = require('../services/etcd-client');
 const { encodeValue } = require('../services/value-decoder');
+const {
+  loadSnapshot,
+  unloadSnapshot,
+  listKeys: snapshotListKeys,
+  getValue: snapshotGetValue,
+  getSnapshotStatus,
+  getSnapshotCache,
+  getMaxSnapshotSize,
+} = require('../services/snapshot-manager');
 const requireEndpoint = require('../middleware/require-endpoint');
 
 const router = Router();
@@ -38,24 +47,46 @@ async function handleConnect(req, res) {
 router.get('/connect', requireEndpoint, handleConnect);
 router.post('/connect', requireEndpoint, handleConnect);
 
-router.get('/keys', requireEndpoint, async (req, res) => {
+router.get('/keys', (req, res) => {
   const prefix = req.query.prefix || '';
-  try {
-    const client = getClient(req.etcdEndpoint);
-    const allKeys = await client.getAll().prefix(prefix).keys();
-    res.json(buildTree(allKeys, prefix));
-  } catch (err) {
-    console.error('Error listing keys:', err.message);
-    res.status(500).json({ error: err.message });
+
+  const cache = getSnapshotCache();
+  if (cache) {
+    const allKeys = snapshotListKeys(prefix);
+    return res.json(buildTree(allKeys, prefix));
   }
+
+  const endpoint = req.query.endpoint || req.body?.endpoint;
+  if (!endpoint) {
+    return res.status(400).json({ error: 'endpoint query parameter is required' });
+  }
+
+  const client = getClient(endpoint);
+  client.getAll().prefix(prefix).keys()
+    .then((allKeys) => res.json(buildTree(allKeys, prefix)))
+    .catch((err) => {
+      console.error('Error listing keys:', err.message);
+      res.status(500).json({ error: err.message });
+    });
 });
 
-router.get('/key', requireEndpoint, async (req, res) => {
+router.get('/key', async (req, res) => {
   const key = req.query.key;
   if (!key) return res.status(400).json({ error: 'key is required' });
 
+  const cache = getSnapshotCache();
+  if (cache) {
+    const buf = snapshotGetValue(key);
+    return res.json(await encodeValue(key, buf));
+  }
+
+  const endpoint = req.query.endpoint || req.body?.endpoint;
+  if (!endpoint) {
+    return res.status(400).json({ error: 'endpoint query parameter is required' });
+  }
+
   try {
-    const client = getClient(req.etcdEndpoint);
+    const client = getClient(endpoint);
     const buf = await client.get(key).buffer();
     res.json(await encodeValue(key, buf));
   } catch (err) {
@@ -137,5 +168,38 @@ function buildTree(allKeys, prefix) {
 
   return results;
 }
+
+router.get('/snapshot/config', (_req, res) => {
+  res.json({ maxSizeBytes: getMaxSnapshotSize() });
+});
+
+router.get('/snapshot/status', (_req, res) => {
+  res.json(getSnapshotStatus());
+});
+
+router.post('/snapshot/upload', (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No snapshot file uploaded' });
+  }
+
+  loadSnapshot(req.file.path, req.file.originalname)
+    .then((result) => {
+      res.json({
+        success: true,
+        snapshotName: result.snapshotName,
+        size: result.size,
+        keyCount: result.keyCount,
+      });
+    })
+    .catch((err) => {
+      console.error('Snapshot load error:', err.message);
+      res.status(400).json({ error: err.message });
+    });
+});
+
+router.post('/snapshot/unload', (_req, res) => {
+  unloadSnapshot();
+  res.json({ success: true });
+});
 
 module.exports = router;

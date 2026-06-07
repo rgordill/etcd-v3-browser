@@ -2,14 +2,25 @@
 
 const express = require('express');
 const cors = require('cors');
+const fs = require('node:fs');
 const path = require('node:path');
+const multer = require('multer');
 const config = require('./config');
 const apiRoutes = require('./routes/api');
 const { startReaper } = require('./services/etcd-client');
 
+fs.mkdirSync(config.snapshot.uploadDir, { recursive: true });
+
+const upload = multer({
+  dest: config.snapshot.uploadDir,
+  limits: { fileSize: config.snapshot.maxSizeBytes },
+});
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+app.use('/api/snapshot/upload', upload.single('snapshot'));
 
 app.use(express.static(config.staticDir));
 
@@ -30,4 +41,5 @@ app.listen(config.port, '0.0.0.0', () => {
   if (config.defaultEtcdEndpoint) {
     console.log(`Default etcd endpoint: ${config.defaultEtcdEndpoint}`);
   }
+  console.log(`Snapshot max size: ${(config.snapshot.maxSizeBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`);
 });

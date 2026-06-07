@@ -27,7 +27,7 @@ LABEL name="etcd-v3-browser" \
       version="${APP_VERSION}" \
       release="1" \
       summary="Web browser for etcd v3 key-value store" \
-      description="PatternFly-based web UI for browsing and inspecting etcd v3 clusters" \
+      description="PatternFly-based web UI for browsing and inspecting etcd v3 clusters with in-memory snapshot loading" \
       maintainer="etcd-v3-browser" \
       vendor="etcd-v3-browser" \
       build-date="${BUILD_DATE}" \
@@ -50,6 +50,8 @@ COPY --chown=1001:0 src/services/ ./services/
 COPY --chown=1001:0 src/middleware/ ./middleware/
 COPY --chown=1001:0 src/lib/ ./lib/
 COPY --chown=1001:0 src/protos/ ./protos/
+
+RUN mkdir -p /tmp/etcd-v3-browser-snapshots && chown 1001:0 /tmp/etcd-v3-browser-snapshots
 
 ENV NODE_ENV=production \
     NODE_TLS_REJECT_UNAUTHORIZED=0
