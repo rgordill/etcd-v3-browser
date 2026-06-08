@@ -123,6 +123,18 @@ code {
   flex-shrink: 0 !important;
 }
 
+.etcd-key-breadcrumb {
+  font-family: var(--pf-t--global--font--family--mono, monospace);
+  font-size: 0.8125rem;
+}
+
+.etcd-key-breadcrumb__link {
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+  vertical-align: baseline;
+}
+
 .etcd-col > .pf-v6-c-card > .pf-v6-c-card__body {
   flex: 1 !important;
   min-height: 0 !important;

@@ -73,6 +73,13 @@ import {
 } from '@patternfly/react-icons';
 import { SyntaxCodeBlock } from './SyntaxCodeBlock';
 import { CopyButton } from './CopyButton';
+import { KeyBreadcrumb } from './KeyBreadcrumb';
+import {
+  findTreeNodeById,
+  getFolderPrefixesForKey,
+  markTreePathExpanded,
+  treeNodeNeedsLoad,
+} from './key-path';
 import { jsonToYaml, parseJsonText } from './value-format';
 import { useTheme, ThemeChoice } from './useTheme';
 import { ThemeContext } from './ThemeContext';
@@ -497,6 +504,7 @@ function App() {
   const [valueLoading, setValueLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filterText, setFilterText] = useState('');
+  const [treeRevealKey, setTreeRevealKey] = useState(0);
 
   const [snapshotFile, setSnapshotFile] = useState<File | null>(null);
   const [snapshotUploading, setSnapshotUploading] = useState(false);
@@ -671,6 +679,7 @@ function App() {
 
   const handleExpand = async (_event: React.MouseEvent, item: TreeViewDataItem) => {
     if (!connection || !item.id || !item.children) return;
+    if (filterText) return;
     const isPlaceholder = item.children.length === 1 && item.children[0].id?.endsWith('__loading');
     if (!isPlaceholder) return;
 
@@ -706,6 +715,55 @@ function App() {
       }
     }
   };
+
+  const expandAndRevealPath = useCallback(async (targetPath: string) => {
+    if (!connection) return;
+    setFilterText('');
+
+    const folderPrefixes = getFolderPrefixesForKey(targetPath);
+    const expandedIds = new Set([...folderPrefixes, targetPath]);
+
+    let updatedTree = treeData;
+    for (const prefix of folderPrefixes) {
+      const node = findTreeNodeById(updatedTree, prefix);
+      if (treeNodeNeedsLoad(node)) {
+        try {
+          const entries = await fetchKeys(connection.endpoint, prefix);
+          updatedTree = replaceNodeChildren(updatedTree, prefix, buildTreeItems(entries));
+        } catch (err: any) {
+          setError(`Failed to expand "${prefix}": ${err.message}`);
+          return;
+        }
+      }
+    }
+
+    updatedTree = markTreePathExpanded(updatedTree, expandedIds);
+    setTreeData(updatedTree);
+    setTreeRevealKey((k) => k + 1);
+
+    const targetNode = findTreeNodeById(updatedTree, targetPath);
+    if (targetNode) {
+      setActiveItems([targetNode]);
+    }
+
+    if (targetPath.endsWith('/')) {
+      return;
+    }
+
+    if (selectedKey !== targetPath) {
+      setSelectedKey(targetPath);
+      setValueLoading(true);
+      try {
+        const result = await fetchValue(connection.endpoint, targetPath);
+        setSelectedResult(result);
+      } catch (err: any) {
+        setError(`Failed to load value for "${targetPath}": ${err.message}`);
+        setSelectedResult(null);
+      } finally {
+        setValueLoading(false);
+      }
+    }
+  }, [connection, treeData, buildTreeItems, selectedKey]);
 
   const filterTree = (items: TreeViewDataItem[], filter: string): TreeViewDataItem[] => {
     if (!filter) return items;
@@ -1152,6 +1210,7 @@ function App() {
                 </EmptyState>
               ) : (
                 <TreeView
+                  key={filterText ? 'filtered' : `unfiltered-${treeRevealKey}`}
                   data={displayData}
                   activeItems={activeItems}
                   onSelect={handleSelect}
@@ -1169,9 +1228,11 @@ function App() {
           <Card>
             <CardTitle>
               {selectedKey ? (
-                <Flex gap={{ default: 'gapSm' }} alignItems={{ default: 'alignItemsCenter' }}>
+                <Flex direction={{ default: 'column' }} gap={{ default: 'gapSm' }}>
                   <FlexItem>Value</FlexItem>
-                  <FlexItem><Label isCompact>{selectedKey}</Label></FlexItem>
+                  <FlexItem>
+                    <KeyBreadcrumb keyPath={selectedKey} onNavigate={expandAndRevealPath} />
+                  </FlexItem>
                 </Flex>
               ) : (
                 'Value'
