@@ -9,10 +9,10 @@ USER 0
 WORKDIR /build
 
 COPY src/frontend/package*.json ./frontend/
-RUN cd frontend && npm install
+RUN cd frontend && npm install --legacy-peer-deps
 
 COPY src/frontend/ ./frontend/
-RUN cd frontend && npm run build
+RUN cd frontend && rm -rf dist-plugin && npm run build && NODE_ENV=production npm run build:plugin
 
 COPY src/package*.json ./
 RUN npm install --omit=dev
@@ -44,6 +44,7 @@ WORKDIR /app
 
 COPY --from=builder --chown=1001:0 /build/node_modules ./node_modules
 COPY --from=builder --chown=1001:0 /build/frontend/build ./frontend/build
+COPY --from=builder --chown=1001:0 /build/frontend/dist-plugin ./frontend/dist-plugin
 COPY --chown=1001:0 src/server.js src/config.js src/package.json ./
 COPY --chown=1001:0 src/routes/ ./routes/
 COPY --chown=1001:0 src/services/ ./services/
@@ -51,7 +52,9 @@ COPY --chown=1001:0 src/middleware/ ./middleware/
 COPY --chown=1001:0 src/lib/ ./lib/
 COPY --chown=1001:0 src/protos/ ./protos/
 
-RUN mkdir -p /tmp/etcd-v3-browser-snapshots && chown 1001:0 /tmp/etcd-v3-browser-snapshots
+RUN mkdir -p /tmp/etcd-v3-browser-snapshots && \
+    chown -R 1001:0 /app /tmp/etcd-v3-browser-snapshots && \
+    chmod -R g=u /app /tmp/etcd-v3-browser-snapshots
 
 ENV NODE_ENV=production \
     NODE_TLS_REJECT_UNAUTHORIZED=0

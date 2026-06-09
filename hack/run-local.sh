@@ -14,7 +14,7 @@ npm install
 
 echo "Building frontend..."
 cd "${SRC_DIR}/frontend"
-npm install
+npm install --legacy-peer-deps
 npm run build
 
 echo "Starting etcd-v3-browser server..."

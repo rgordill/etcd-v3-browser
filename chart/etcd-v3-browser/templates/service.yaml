@@ -4,6 +4,10 @@ metadata:
   name: {{ include "etcd-v3-browser.fullname" . }}
   labels:
     {{- include "etcd-v3-browser.labels" . | nindent 4 }}
+  {{- if .Values.openshiftConsole.enabled }}
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: {{ include "etcd-v3-browser.consolePluginTlsSecretName" . }}
+  {{- end }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -11,5 +15,11 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    {{- if .Values.openshiftConsole.enabled }}
+    - port: {{ .Values.openshiftConsole.pluginPort }}
+      targetPort: plugin
+      protocol: TCP
+      name: plugin
+    {{- end }}
   selector:
     {{- include "etcd-v3-browser.selectorLabels" . | nindent 4 }}

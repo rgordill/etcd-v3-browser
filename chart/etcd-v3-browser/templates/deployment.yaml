@@ -19,6 +19,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "etcd-v3-browser.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -34,6 +35,10 @@ spec:
           env:
             - name: NODE_TLS_REJECT_UNAUTHORIZED
               value: "0"
+            {{- if .Values.tmp.enabled }}
+            - name: ETCD_SNAPSHOT_DIR
+              value: /tmp/etcd-v3-browser-snapshots
+            {{- end }}
             {{- if .Values.etcd.hosts }}
             - name: ETCD_HOSTS
               value: {{ .Values.etcd.hosts | quote }}
@@ -46,11 +51,17 @@ spec:
             - name: ETCD_CLIENT_KEY
               value: /etc/etcd-tls/{{ .Values.etcd.tls.clientKeyKey }}
             {{- end }}
-          {{- if .Values.etcd.tls.enabled }}
+          {{- if or .Values.tmp.enabled .Values.etcd.tls.enabled }}
           volumeMounts:
+            {{- if .Values.tmp.enabled }}
+            - name: tmp
+              mountPath: /tmp
+            {{- end }}
+            {{- if .Values.etcd.tls.enabled }}
             - name: etcd-tls
               mountPath: /etc/etcd-tls
               readOnly: true
+            {{- end }}
           {{- end }}
           livenessProbe:
             httpGet:
@@ -68,11 +79,86 @@ spec:
             timeoutSeconds: 3
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-      {{- if .Values.etcd.tls.enabled }}
+        {{- if .Values.openshiftConsole.enabled }}
+        - name: plugin-nginx
+          image: {{ .Values.openshiftConsole.nginxImage | quote }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - nginx
+            - -g
+            - daemon off;
+            - -c
+            - /etc/nginx/nginx.conf
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: plugin
+              containerPort: {{ .Values.openshiftConsole.pluginPort }}
+              protocol: TCP
+          volumeMounts:
+            - name: plugin-tls
+              mountPath: /etc/serving-cert
+              readOnly: true
+            - name: plugin-nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            - name: nginx-tmp
+              mountPath: /tmp
+            - name: nginx-var-run
+              mountPath: /var/run
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+          livenessProbe:
+            tcpSocket:
+              port: plugin
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: plugin
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+        {{- end }}
+      {{- if or .Values.tmp.enabled .Values.etcd.tls.enabled .Values.openshiftConsole.enabled }}
       volumes:
+        {{- if .Values.tmp.enabled }}
+        - name: tmp
+          emptyDir:
+            {{- with .Values.tmp.sizeLimit }}
+            sizeLimit: {{ . }}
+            {{- end }}
+        {{- end }}
+        {{- if .Values.etcd.tls.enabled }}
         - name: etcd-tls
           secret:
             secretName: {{ .Values.etcd.tls.secretName }}
+        {{- end }}
+        {{- if .Values.openshiftConsole.enabled }}
+        - name: plugin-tls
+          secret:
+            secretName: {{ include "etcd-v3-browser.consolePluginTlsSecretName" . }}
+        - name: plugin-nginx-config
+          configMap:
+            name: {{ include "etcd-v3-browser.fullname" . }}-plugin-nginx
+        - name: nginx-tmp
+          emptyDir: {}
+        - name: nginx-var-run
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
+        {{- end }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

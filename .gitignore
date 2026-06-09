@@ -3,6 +3,7 @@ node_modules/
 
 # Production / local builds
 src/frontend/build/
+src/frontend/dist-plugin/
 dist/
 out/
 

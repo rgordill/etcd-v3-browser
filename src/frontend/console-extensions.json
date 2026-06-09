@@ -1,0 +1,20 @@
+[
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/etcd-browser",
+      "component": { "$codeRef": "EtcdBrowserPage" }
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "etcd-browser",
+      "name": "etcd v3 Browser",
+      "href": "/etcd-browser",
+      "perspective": "admin",
+      "section": "home"
+    }
+  }
+]

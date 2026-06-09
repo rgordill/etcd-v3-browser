@@ -58,3 +58,24 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Console plugin name (must match plugin-manifest.json name field)
+*/}}
+{{- define "etcd-v3-browser.consolePluginName" -}}
+{{- .Values.openshiftConsole.pluginName | default "etcd-v3-browser" }}
+{{- end }}
+
+{{/*
+Console patcher resource name prefix
+*/}}
+{{- define "etcd-v3-browser.consolePatcherName" -}}
+{{- printf "%s-console-patcher" (include "etcd-v3-browser.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+TLS secret name for the OpenShift serving certificate (console plugin HTTPS)
+*/}}
+{{- define "etcd-v3-browser.consolePluginTlsSecretName" -}}
+{{- printf "%s-plugin-tls" (include "etcd-v3-browser.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}

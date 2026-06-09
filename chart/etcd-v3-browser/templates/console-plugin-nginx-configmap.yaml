@@ -1,0 +1,40 @@
+{{- if .Values.openshiftConsole.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "etcd-v3-browser.fullname" . }}-plugin-nginx
+  labels:
+    {{- include "etcd-v3-browser.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    worker_processes 1;
+    error_log /dev/stderr info;
+    pid /tmp/nginx.pid;
+    events {
+      worker_connections 1024;
+    }
+    http {
+      access_log /dev/stdout;
+      server {
+        listen {{ .Values.openshiftConsole.pluginPort }} ssl;
+        ssl_certificate /etc/serving-cert/tls.crt;
+        ssl_certificate_key /etc/serving-cert/tls.key;
+        # Backend API for console proxy (/api/proxy/plugin/<name>/backend/...)
+        location /api/ {
+          proxy_pass http://127.0.0.1:{{ .Values.service.port }};
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        # Plugin static assets (manifest, entry script, chunks) live under /plugin on the app
+        location / {
+          proxy_pass http://127.0.0.1:{{ .Values.service.port }}/plugin/;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+        }
+      }
+    }
+{{- end }}

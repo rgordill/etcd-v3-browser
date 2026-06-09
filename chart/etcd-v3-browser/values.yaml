@@ -1,16 +1,82 @@
+# yaml-language-server: $schema=values.schema.json
+# @schema.root
+# title: etcd-v3-browser Helm chart values
+# description: Configuration for deploying the etcd v3 Browser on Kubernetes or OpenShift
+# @schema.root
+# @schema
+# type: integer
+# minimum: 1
+# @schema
+# Number of pod replicas
 replicaCount: 1
 
+# @schema
+# type: object
+# required: true
+# additionalProperties: false
+# properties:
+#   repository:
+#     type: string
+#   pullPolicy:
+#     type: string
+#     enum: [Always, IfNotPresent, Never]
+#   tag:
+#     type: string
+# @schema
+# Container image settings
 image:
   repository: localhost/etcd-v3-browser
   pullPolicy: IfNotPresent
   tag: "latest"
 
+# @schema
+# type: array
+# items:
+#   type: object
+#   required: [name]
+#   properties:
+#     name:
+#       type: string
+# @schema
+# Image pull secrets for private registries
 imagePullSecrets: []
+
+# @schema
+# type: string
+# @schema
+# Override chart name used in labels and resource names
 nameOverride: ""
+
+# @schema
+# type: string
+# @schema
+# Override fully qualified application name
 fullnameOverride: ""
 
+# @schema
+# type: object
+# additionalProperties: false
+# properties:
+#   hosts:
+#     type: string
+#     description: Optional ETCD_HOSTS pre-fill for the connection form (empty = UI only)
+#   tls:
+#     type: object
+#     additionalProperties: false
+#     properties:
+#       enabled:
+#         type: boolean
+#       secretName:
+#         type: string
+#       caCertKey:
+#         type: string
+#       clientCertKey:
+#         type: string
+#       clientKeyKey:
+#         type: string
+# @schema
+# Backend connection defaults for etcd (optional pre-fill)
 etcd:
-  # Optional: pre-fill the connection form with a default endpoint
   hosts: ""
   tls:
     enabled: false
@@ -19,40 +85,149 @@ etcd:
     clientCertKey: tls.crt
     clientKeyKey: tls.key
 
+# @schema
+# type: object
+# additionalProperties: false
+# properties:
+#   enabled:
+#     type: boolean
+#     description: Mount an emptyDir at /tmp for snapshot uploads and Node.js temp files (required with readOnlyRootFilesystem)
+#   sizeLimit:
+#     type: string
+#     description: Optional emptyDir size limit (e.g. 4Gi)
+# @schema
+# Writable /tmp for snapshot uploads and Node.js temp files (required with readOnlyRootFilesystem)
+tmp:
+  enabled: true
+  sizeLimit: ""
+
+# @schema
+# type: object
+# additionalProperties: false
+# properties:
+#   create:
+#     type: boolean
+#   annotations:
+#     type: object
+#     additionalProperties: true
+#   name:
+#     type: string
+#   automountServiceAccountToken:
+#     type: boolean
+# @schema
+# ServiceAccount configuration
 serviceAccount:
   create: true
   annotations: {}
   name: ""
+  automountServiceAccountToken: false
 
+# @schema
+# type: object
+# additionalProperties: true
+# @schema
+# Pod-level security context (restricted-v2 SCC compatible — no hardcoded UID/GID
+# so OpenShift can assign from the namespace's MustRunAsRange)
 podSecurityContext:
   runAsNonRoot: true
-  runAsUser: 1001
-  fsGroup: 1001
   seccompProfile:
     type: RuntimeDefault
 
+# @schema
+# type: object
+# additionalProperties: true
+# @schema
+# Container-level security context (compatible with OpenShift restricted SCC)
 securityContext:
   allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false
+  readOnlyRootFilesystem: true
   capabilities:
     drop:
       - ALL
 
+# @schema
+# type: object
+# additionalProperties: false
+# properties:
+#   type:
+#     type: string
+#     enum: [ClusterIP, NodePort, LoadBalancer]
+#   port:
+#     type: integer
+#     minimum: 1
+#     maximum: 65535
+# @schema
+# Kubernetes Service settings
 service:
   type: ClusterIP
   port: 3001
 
+# @schema
+# type: object
+# additionalProperties: false
+# properties:
+#   enabled:
+#     type: boolean
+#   className:
+#     type: string
+#     description: Use openshift-default on OpenShift; nginx or your controller class on vanilla Kubernetes
+#   annotations:
+#     type: object
+#     additionalProperties: true
+#   hosts:
+#     type: array
+#     items:
+#       type: object
+#       required: [host, paths]
+#       properties:
+#         host:
+#           type: string
+#         paths:
+#           type: array
+#           items:
+#             type: object
+#             required: [path, pathType]
+#             properties:
+#               path:
+#                 type: string
+#               pathType:
+#                 type: string
+#                 enum: [Prefix, Exact, ImplementationSpecific]
+#   tls:
+#     type: array
+#     items:
+#       type: object
+#       required: [hosts, secretName]
+#       properties:
+#         hosts:
+#           type: array
+#           items:
+#             type: string
+#         secretName:
+#           type: string
+# @schema
+# Ingress exposure (OpenShift default uses openshift-default class with edge TLS termination)
 ingress:
   enabled: false
-  className: nginx
-  annotations: {}
+  className: openshift-default
+  annotations:
+    route.openshift.io/termination: edge
+    cert-manager.io/cluster-issuer: lab-ca-issuer
   hosts:
-    - host: etcd-browser.example.com
+    - host: etcd-browser.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
       paths:
         - path: /
           pathType: Prefix
-  tls: []
+  tls:
+    - hosts:
+        - etcd-browser.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
+      secretName: etcd-v3-browser-tls
 
+# @schema
+# type: object
+# additionalProperties: true
+# @schema
+# CPU and memory resource requests and limits
 resources:
   limits:
     cpu: 500m
@@ -61,6 +236,57 @@ resources:
     cpu: 100m
     memory: 128Mi
 
+# @schema
+# type: object
+# additionalProperties: true
+# @schema
+# Node selector for pod scheduling
 nodeSelector: {}
+
+# @schema
+# type: array
+# @schema
+# Pod tolerations
 tolerations: []
+
+# @schema
+# type: object
+# additionalProperties: true
+# @schema
+# Pod affinity and anti-affinity rules
 affinity: {}
+
+# @schema
+# type: object
+# additionalProperties: false
+# properties:
+#   enabled:
+#     type: boolean
+#     description: Deploy ConsolePlugin and register with the OpenShift console
+#   pluginName:
+#     type: string
+#     description: ConsolePlugin resource name (must match plugin-manifest.json)
+#   displayName:
+#     type: string
+#   backendBasePath:
+#     type: string
+#     description: Service path where plugin static assets are served
+#   pluginPort:
+#     type: integer
+#     description: HTTPS port for the nginx plugin sidecar (OpenShift serving cert)
+#   patcherImage:
+#     type: string
+#     description: Container image with oc and jq for registering the plugin with the console operator
+#   nginxImage:
+#     type: string
+#     description: nginx image for the HTTPS plugin sidecar
+# @schema
+# OpenShift console dynamic plugin integration
+openshiftConsole:
+  enabled: false
+  pluginName: etcd-v3-browser
+  displayName: etcd v3 Browser
+  backendBasePath: /
+  pluginPort: 9443
+  patcherImage: registry.redhat.io/openshift4/ose-cli:latest
+  nginxImage: docker.io/nginxinc/nginx-unprivileged:stable-alpine

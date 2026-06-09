@@ -23,6 +23,7 @@ app.use(express.json());
 app.use('/api/snapshot/upload', upload.single('snapshot'));
 
 app.use(express.static(config.staticDir));
+app.use('/plugin', express.static(config.pluginDir));
 
 app.use('/api', apiRoutes);
 

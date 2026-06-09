@@ -1,0 +1,28 @@
+{{- if .Values.openshiftConsole.enabled }}
+apiVersion: console.openshift.io/v1
+kind: ConsolePlugin
+metadata:
+  name: {{ include "etcd-v3-browser.consolePluginName" . }}
+  labels:
+    {{- include "etcd-v3-browser.labels" . | nindent 4 }}
+spec:
+  displayName: {{ .Values.openshiftConsole.displayName | quote }}
+  backend:
+    type: Service
+    service:
+      name: {{ include "etcd-v3-browser.fullname" . }}
+      namespace: {{ .Release.Namespace }}
+      port: {{ .Values.openshiftConsole.pluginPort }}
+      basePath: {{ .Values.openshiftConsole.backendBasePath }}
+  proxy:
+    - alias: backend
+      authorization: UserToken
+      endpoint:
+        type: Service
+        service:
+          name: {{ include "etcd-v3-browser.fullname" . }}
+          namespace: {{ .Release.Namespace }}
+          port: {{ .Values.openshiftConsole.pluginPort }}
+  i18n:
+    loadType: Lazy
+{{- end }}

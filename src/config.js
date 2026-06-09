@@ -26,4 +26,5 @@ module.exports = {
   },
 
   staticDir: path.join(__dirname, 'frontend', 'build'),
+  pluginDir: path.join(__dirname, 'frontend', 'dist-plugin'),
 };

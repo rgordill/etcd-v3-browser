@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import '@patternfly/patternfly/patternfly.css';
 import {
   Page,
   PageSection,
@@ -84,8 +83,9 @@ import { jsonToYaml, parseJsonText } from './value-format';
 import { useTheme, ThemeChoice } from './useTheme';
 import { ThemeContext } from './ThemeContext';
 
-const etcdLogoLightUrl = `${process.env.PUBLIC_URL}/etcd-logo.svg`;
-const etcdLogoDarkUrl = `${process.env.PUBLIC_URL}/etcd-logo-dark.svg`;
+const PUBLIC_URL = typeof process !== 'undefined' && process.env?.PUBLIC_URL ? process.env.PUBLIC_URL : '';
+const etcdLogoLightUrl = `${PUBLIC_URL}/etcd-logo.svg`;
+const etcdLogoDarkUrl = `${PUBLIC_URL}/etcd-logo-dark.svg`;
 
 const DISCLAIMER_TEXT =
   'This project is not official, affiliated with, or endorsed by the etcd project, the CNCF, or the Linux Foundation. '
@@ -126,20 +126,18 @@ interface ValueResult {
   k8sResource?: K8sResource;
 }
 
-const API_BASE = process.env.REACT_APP_API_URL || '';
-
 function endpointParam(endpoint: string): string {
   return `endpoint=${encodeURIComponent(endpoint)}`;
 }
 
-async function fetchConfig(): Promise<{ defaultEndpoint: string }> {
-  const res = await fetch(`${API_BASE}/api/config`);
+async function fetchConfig(apiBase: string, fetchFn: typeof fetch): Promise<{ defaultEndpoint: string }> {
+  const res = await fetchFn(`${apiBase}/api/config`);
   if (!res.ok) throw new Error('Failed to fetch config');
   return res.json();
 }
 
-async function connectToEtcd(endpoint: string, tlsOptions?: TlsOptions): Promise<ConnectionInfo> {
-  const res = await fetch(`${API_BASE}/api/connect`, {
+async function connectToEtcd(apiBase: string, fetchFn: typeof fetch, endpoint: string, tlsOptions?: TlsOptions): Promise<ConnectionInfo> {
+  const res = await fetchFn(`${apiBase}/api/connect`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -162,16 +160,16 @@ interface SnapshotResult {
   keyCount: number;
 }
 
-async function fetchSnapshotConfig(): Promise<SnapshotConfig> {
-  const res = await fetch(`${API_BASE}/api/snapshot/config`);
+async function fetchSnapshotConfig(apiBase: string, fetchFn: typeof fetch): Promise<SnapshotConfig> {
+  const res = await fetchFn(`${apiBase}/api/snapshot/config`);
   if (!res.ok) throw new Error('Failed to fetch snapshot config');
   return res.json();
 }
 
-async function uploadSnapshot(file: File): Promise<SnapshotResult> {
+async function uploadSnapshot(apiBase: string, fetchFn: typeof fetch, file: File): Promise<SnapshotResult> {
   const formData = new FormData();
   formData.append('snapshot', file);
-  const res = await fetch(`${API_BASE}/api/snapshot/upload`, {
+  const res = await fetchFn(`${apiBase}/api/snapshot/upload`, {
     method: 'POST',
     body: formData,
   });
@@ -180,12 +178,12 @@ async function uploadSnapshot(file: File): Promise<SnapshotResult> {
   return data;
 }
 
-async function unloadSnapshot(): Promise<void> {
-  await fetch(`${API_BASE}/api/snapshot/unload`, { method: 'POST' });
+async function unloadSnapshot(apiBase: string, fetchFn: typeof fetch): Promise<void> {
+  await fetchFn(`${apiBase}/api/snapshot/unload`, { method: 'POST' });
 }
 
-async function fetchKeys(endpoint: string, prefix: string): Promise<EtcdEntry[]> {
-  const res = await fetch(`${API_BASE}/api/keys?${endpointParam(endpoint)}&prefix=${encodeURIComponent(prefix)}`);
+async function fetchKeys(apiBase: string, fetchFn: typeof fetch, endpoint: string, prefix: string): Promise<EtcdEntry[]> {
+  const res = await fetchFn(`${apiBase}/api/keys?${endpointParam(endpoint)}&prefix=${encodeURIComponent(prefix)}`);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.error || `Failed to fetch keys: ${res.statusText}`);
@@ -193,8 +191,8 @@ async function fetchKeys(endpoint: string, prefix: string): Promise<EtcdEntry[]>
   return res.json();
 }
 
-async function fetchValue(endpoint: string, key: string): Promise<ValueResult> {
-  const res = await fetch(`${API_BASE}/api/key?${endpointParam(endpoint)}&key=${encodeURIComponent(key)}`);
+async function fetchValue(apiBase: string, fetchFn: typeof fetch, endpoint: string, key: string): Promise<ValueResult> {
+  const res = await fetchFn(`${apiBase}/api/key?${endpointParam(endpoint)}&key=${encodeURIComponent(key)}`);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.error || `Failed to fetch value: ${res.statusText}`);
@@ -473,7 +471,17 @@ const THEME_LABELS: Record<ThemeChoice, { icon: React.ReactNode; label: string }
   auto: { icon: <AdjustIcon />, label: 'System default' },
 };
 
-function App() {
+export interface AppProps {
+  isPlugin?: boolean;
+  apiBase?: string;
+  fetchFn?: typeof fetch;
+}
+
+function App({
+  isPlugin = false,
+  apiBase = (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || '',
+  fetchFn = window.fetch.bind(window),
+}: AppProps) {
   const { choice: themeChoice, effective: effectiveTheme, setChoice: setThemeChoice } = useTheme();
   const etcdLogoUrl = effectiveTheme === 'dark' ? etcdLogoDarkUrl : etcdLogoLightUrl;
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -515,7 +523,7 @@ function App() {
   useEffect(() => {
     if (configLoaded.current) return;
     configLoaded.current = true;
-    fetchConfig()
+    fetchConfig(apiBase, fetchFn)
       .then((cfg) => {
         if (cfg.defaultEndpoint) {
           try {
@@ -530,7 +538,7 @@ function App() {
       })
       .catch(() => {});
 
-    fetchSnapshotConfig()
+    fetchSnapshotConfig(apiBase, fetchFn)
       .then((cfg) => setSnapshotMaxSize(cfg.maxSizeBytes))
       .catch(() => {});
 
@@ -568,7 +576,7 @@ function App() {
     } : undefined;
 
     try {
-      const info = await connectToEtcd(ep, tlsOptions);
+      const info = await connectToEtcd(apiBase, fetchFn, ep, tlsOptions);
       setConnection(info);
       addRecentEndpoint(ep);
       setTreeData([]);
@@ -585,7 +593,7 @@ function App() {
 
   const handleDisconnect = useCallback(() => {
     if (snapshotName) {
-      unloadSnapshot().catch(() => {});
+      unloadSnapshot(apiBase, fetchFn).catch(() => {});
       setSnapshotName(null);
       setSnapshotFile(null);
     }
@@ -611,7 +619,7 @@ function App() {
     setSnapshotUploading(true);
     setSnapshotError(null);
     try {
-      const result = await uploadSnapshot(snapshotFile);
+      const result = await uploadSnapshot(apiBase, fetchFn, snapshotFile);
       setConnection({ endpoint: 'snapshot://local', version: 'snapshot', dbSize: String(result.size) });
       setSnapshotName(result.snapshotName);
       setTreeData([]);
@@ -664,7 +672,7 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      const entries = await fetchKeys(connection.endpoint, '');
+        const entries = await fetchKeys(apiBase, fetchFn, connection.endpoint, '');
       setTreeData(buildTreeItems(entries));
     } catch (err: any) {
       setError(err.message);
@@ -684,7 +692,7 @@ function App() {
     if (!isPlaceholder) return;
 
     try {
-      const entries = await fetchKeys(connection.endpoint, item.id);
+        const entries = await fetchKeys(apiBase, fetchFn, connection.endpoint, item.id);
       const childItems = buildTreeItems(entries);
       setTreeData((prev) => replaceNodeChildren(prev, item.id!, childItems));
     } catch (err: any) {
@@ -705,7 +713,7 @@ function App() {
       setSelectedKey(item.id);
       setValueLoading(true);
       try {
-        const result = await fetchValue(connection.endpoint, item.id);
+          const result = await fetchValue(apiBase, fetchFn, connection.endpoint, item.id);
         setSelectedResult(result);
       } catch (err: any) {
         setError(`Failed to load value for "${item.id}": ${err.message}`);
@@ -728,7 +736,7 @@ function App() {
       const node = findTreeNodeById(updatedTree, prefix);
       if (treeNodeNeedsLoad(node)) {
         try {
-          const entries = await fetchKeys(connection.endpoint, prefix);
+            const entries = await fetchKeys(apiBase, fetchFn, connection.endpoint, prefix);
           updatedTree = replaceNodeChildren(updatedTree, prefix, buildTreeItems(entries));
         } catch (err: any) {
           setError(`Failed to expand "${prefix}": ${err.message}`);
@@ -754,7 +762,7 @@ function App() {
       setSelectedKey(targetPath);
       setValueLoading(true);
       try {
-        const result = await fetchValue(connection.endpoint, targetPath);
+          const result = await fetchValue(apiBase, fetchFn, connection.endpoint, targetPath);
         setSelectedResult(result);
       } catch (err: any) {
         setError(`Failed to load value for "${targetPath}": ${err.message}`);
@@ -1259,6 +1267,44 @@ function App() {
     </div>
   );
 
+  const content = (
+    <>
+      {connection ? browserPanel : (
+        <Card>
+          <CardBody>
+            <ToggleGroup aria-label="Connection mode" style={{ marginBottom: 'var(--pf-t--global--spacer--md)' }}>
+              <ToggleGroupItem
+                text="Connect to etcd"
+                buttonId="mode-connect"
+                isSelected={connectionMode === 'connect'}
+                onChange={() => setConnectionMode('connect')}
+              />
+              <ToggleGroupItem
+                text="Load Snapshot"
+                buttonId="mode-snapshot"
+                isSelected={connectionMode === 'snapshot'}
+                onChange={() => setConnectionMode('snapshot')}
+              />
+            </ToggleGroup>
+            <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+              {connectionMode === 'connect' ? connectionForm : snapshotForm}
+            </div>
+          </CardBody>
+        </Card>
+      )}
+    </>
+  );
+
+  if (isPlugin) {
+    return (
+      <ThemeContext.Provider value={effectiveTheme}>
+        <PageSection className="etcd-main-section">
+          {content}
+        </PageSection>
+      </ThemeContext.Provider>
+    );
+  }
+
   return (
     <ThemeContext.Provider value={effectiveTheme}>
     <Page
@@ -1346,29 +1392,7 @@ function App() {
       }
     >
       <PageSection className="etcd-main-section">
-        {connection ? browserPanel : (
-          <Card>
-            <CardBody>
-              <ToggleGroup aria-label="Connection mode" style={{ marginBottom: 'var(--pf-t--global--spacer--md)' }}>
-                <ToggleGroupItem
-                  text="Connect to etcd"
-                  buttonId="mode-connect"
-                  isSelected={connectionMode === 'connect'}
-                  onChange={() => setConnectionMode('connect')}
-                />
-                <ToggleGroupItem
-                  text="Load Snapshot"
-                  buttonId="mode-snapshot"
-                  isSelected={connectionMode === 'snapshot'}
-                  onChange={() => setConnectionMode('snapshot')}
-                />
-              </ToggleGroup>
-              <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                {connectionMode === 'connect' ? connectionForm : snapshotForm}
-              </div>
-            </CardBody>
-          </Card>
-        )}
+        {content}
       </PageSection>
       <div className="etcd-disclaimer">
         {DISCLAIMER_TEXT}

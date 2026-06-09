@@ -1,0 +1,70 @@
+{{- if .Values.openshiftConsole.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "etcd-v3-browser.consolePatcherName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "etcd-v3-browser.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      labels:
+        {{- include "etcd-v3-browser.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "etcd-v3-browser.consolePatcherName" . }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: patcher
+          image: {{ .Values.openshiftConsole.patcherImage | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 50Mi
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              python3 <<'PY'
+              import json
+              import subprocess
+
+              plugin = "{{ include "etcd-v3-browser.consolePluginName" . }}"
+              raw = subprocess.check_output(
+                  ["oc", "get", "consoles.operator.openshift.io", "cluster", "-o", "json"]
+              )
+              data = json.loads(raw)
+              plugins = list(data.get("spec", {}).get("plugins") or [])
+              if plugin not in plugins:
+                  plugins.append(plugin)
+                  patch = json.dumps({"spec": {"plugins": plugins}})
+                  subprocess.check_call(
+                      [
+                          "oc",
+                          "patch",
+                          "consoles.operator.openshift.io",
+                          "cluster",
+                          "--patch",
+                          patch,
+                          "--type=merge",
+                      ]
+                  )
+                  print(f"Enabled console plugin: {plugin}")
+              else:
+                  print(f"Console plugin already enabled: {plugin}")
+              PY
+{{- end }}

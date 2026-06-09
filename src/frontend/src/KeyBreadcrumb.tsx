@@ -17,14 +17,18 @@ export function KeyBreadcrumb({ keyPath, onNavigate }: KeyBreadcrumbProps) {
         const isActive = index === segments.length - 1;
         return (
           <BreadcrumbItem key={segment.path} isActive={isActive}>
-            <Button
-              variant="link"
-              isInline
-              className="etcd-key-breadcrumb__link"
-              onClick={() => onNavigate(segment.path)}
-            >
-              {segment.label}
-            </Button>
+            {isActive ? (
+              segment.label
+            ) : (
+              <Button
+                variant="link"
+                isInline
+                className="etcd-key-breadcrumb__link"
+                onClick={() => onNavigate(segment.path)}
+              >
+                {segment.label}
+              </Button>
+            )}
           </BreadcrumbItem>
         );
       })}
