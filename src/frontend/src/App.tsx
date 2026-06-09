@@ -83,6 +83,8 @@ import { jsonToYaml, parseJsonText } from './value-format';
 import { useTheme, ThemeChoice } from './useTheme';
 import { ThemeContext } from './ThemeContext';
 
+export type FetchFn = (url: string, options?: RequestInit) => Promise<Response>;
+
 const PUBLIC_URL = typeof process !== 'undefined' && process.env?.PUBLIC_URL ? process.env.PUBLIC_URL : '';
 const etcdLogoLightUrl = `${PUBLIC_URL}/etcd-logo.svg`;
 const etcdLogoDarkUrl = `${PUBLIC_URL}/etcd-logo-dark.svg`;
@@ -130,13 +132,25 @@ function endpointParam(endpoint: string): string {
   return `endpoint=${encodeURIComponent(endpoint)}`;
 }
 
-async function fetchConfig(apiBase: string, fetchFn: typeof fetch): Promise<{ defaultEndpoint: string }> {
-  const res = await fetchFn(`${apiBase}/api/config`);
-  if (!res.ok) throw new Error('Failed to fetch config');
-  return res.json();
+async function safeJson(res: Response): Promise<any> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    const preview = text.slice(0, 200).trim();
+    throw new Error(
+      `Server returned non-JSON (HTTP ${res.status}): ${preview}`
+    );
+  }
 }
 
-async function connectToEtcd(apiBase: string, fetchFn: typeof fetch, endpoint: string, tlsOptions?: TlsOptions): Promise<ConnectionInfo> {
+async function fetchConfig(apiBase: string, fetchFn: FetchFn): Promise<{ defaultEndpoint: string }> {
+  const res = await fetchFn(`${apiBase}/api/config`);
+  if (!res.ok) throw new Error('Failed to fetch config');
+  return safeJson(res);
+}
+
+async function connectToEtcd(apiBase: string, fetchFn: FetchFn, endpoint: string, tlsOptions?: TlsOptions): Promise<ConnectionInfo> {
   const res = await fetchFn(`${apiBase}/api/connect`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -145,7 +159,7 @@ async function connectToEtcd(apiBase: string, fetchFn: typeof fetch, endpoint: s
       ...(tlsOptions && { tls: tlsOptions }),
     }),
   });
-  const data = await res.json();
+  const data = await safeJson(res);
   if (!res.ok) throw new Error(data.error || `Connection failed (${res.status})`);
   return { endpoint: data.endpoint, version: data.version, dbSize: data.dbSize };
 }
@@ -160,44 +174,44 @@ interface SnapshotResult {
   keyCount: number;
 }
 
-async function fetchSnapshotConfig(apiBase: string, fetchFn: typeof fetch): Promise<SnapshotConfig> {
+async function fetchSnapshotConfig(apiBase: string, fetchFn: FetchFn): Promise<SnapshotConfig> {
   const res = await fetchFn(`${apiBase}/api/snapshot/config`);
   if (!res.ok) throw new Error('Failed to fetch snapshot config');
-  return res.json();
+  return safeJson(res);
 }
 
-async function uploadSnapshot(apiBase: string, fetchFn: typeof fetch, file: File): Promise<SnapshotResult> {
+async function uploadSnapshot(apiBase: string, fetchFn: FetchFn, file: File): Promise<SnapshotResult> {
   const formData = new FormData();
   formData.append('snapshot', file);
   const res = await fetchFn(`${apiBase}/api/snapshot/upload`, {
     method: 'POST',
     body: formData,
   });
-  const data = await res.json();
+  const data = await safeJson(res);
   if (!res.ok) throw new Error(data.error || `Snapshot upload failed (${res.status})`);
   return data;
 }
 
-async function unloadSnapshot(apiBase: string, fetchFn: typeof fetch): Promise<void> {
+async function unloadSnapshot(apiBase: string, fetchFn: FetchFn): Promise<void> {
   await fetchFn(`${apiBase}/api/snapshot/unload`, { method: 'POST' });
 }
 
-async function fetchKeys(apiBase: string, fetchFn: typeof fetch, endpoint: string, prefix: string): Promise<EtcdEntry[]> {
+async function fetchKeys(apiBase: string, fetchFn: FetchFn, endpoint: string, prefix: string): Promise<EtcdEntry[]> {
   const res = await fetchFn(`${apiBase}/api/keys?${endpointParam(endpoint)}&prefix=${encodeURIComponent(prefix)}`);
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
+    const data = await safeJson(res).catch(() => ({}));
     throw new Error(data.error || `Failed to fetch keys: ${res.statusText}`);
   }
-  return res.json();
+  return safeJson(res);
 }
 
-async function fetchValue(apiBase: string, fetchFn: typeof fetch, endpoint: string, key: string): Promise<ValueResult> {
+async function fetchValue(apiBase: string, fetchFn: FetchFn, endpoint: string, key: string): Promise<ValueResult> {
   const res = await fetchFn(`${apiBase}/api/key?${endpointParam(endpoint)}&key=${encodeURIComponent(key)}`);
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
+    const data = await safeJson(res).catch(() => ({}));
     throw new Error(data.error || `Failed to fetch value: ${res.statusText}`);
   }
-  const data = await res.json();
+  const data = await safeJson(res);
   return {
     value: data.value,
     encoding: data.encoding || 'text',
@@ -474,7 +488,7 @@ const THEME_LABELS: Record<ThemeChoice, { icon: React.ReactNode; label: string }
 export interface AppProps {
   isPlugin?: boolean;
   apiBase?: string;
-  fetchFn?: typeof fetch;
+  fetchFn?: FetchFn;
 }
 
 function App({
