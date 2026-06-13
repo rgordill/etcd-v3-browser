@@ -15,6 +15,11 @@ data:
     }
     http {
       access_log /dev/stdout;
+      client_body_temp_path /tmp/nginx-client-body;
+      proxy_temp_path /tmp/nginx-proxy;
+      fastcgi_temp_path /tmp/nginx-fastcgi;
+      scgi_temp_path /tmp/nginx-scgi;
+      uwsgi_temp_path /tmp/nginx-uwsgi;
       server {
         listen {{ .Values.openshiftConsole.pluginPort }} ssl;
         ssl_certificate /etc/serving-cert/tls.crt;

@@ -29,7 +29,12 @@ function loadSavedChoice(): ThemeChoice {
   return 'auto';
 }
 
-export function useTheme() {
+/**
+ * Standalone theme hook — manages theme choice and applies it to the DOM.
+ * Pass `disabled=true` to prevent DOM mutations (used in console plugin mode
+ * where the host console owns the theme).
+ */
+export function useTheme(disabled = false) {
   const [choice, setChoiceState] = useState<ThemeChoice>(loadSavedChoice);
   const [effective, setEffective] = useState<'light' | 'dark'>(() =>
     resolveEffective(loadSavedChoice()),
@@ -40,15 +45,15 @@ export function useTheme() {
     setChoiceState(next);
     const eff = resolveEffective(next);
     setEffective(eff);
-    applyToDOM(eff);
-  }, []);
+    if (!disabled) applyToDOM(eff);
+  }, [disabled]);
 
   useEffect(() => {
-    applyToDOM(effective);
-  }, [effective]);
+    if (!disabled) applyToDOM(effective);
+  }, [effective, disabled]);
 
   useEffect(() => {
-    if (choice !== 'auto') return;
+    if (disabled || choice !== 'auto') return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const handler = () => {
       const eff = resolveEffective('auto');
@@ -57,7 +62,7 @@ export function useTheme() {
     };
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
-  }, [choice]);
+  }, [choice, disabled]);
 
   return { choice, effective, setChoice } as const;
 }

@@ -76,7 +76,7 @@ code {
   overflow: hidden !important;
 }
 
-/* Browser panel: two-column flex filling the section */
+/* Browser panel: Drawer-based layout */
 .etcd-browser {
   display: flex;
   flex-direction: column;
@@ -85,42 +85,97 @@ code {
   overflow: hidden;
 }
 
-.etcd-browser__columns {
+.etcd-drawer {
   flex: 1;
-  display: flex;
-  gap: 0.75rem;
   min-height: 0;
 }
 
-/* Each column: a flex column that stretches its Card to fill */
-.etcd-col {
+.etcd-drawer .pf-v6-c-drawer__content {
+  min-height: 0;
+}
+
+/* Tree panel (left side) */
+.etcd-tree-panel {
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  border-right: 1px solid var(--pf-t--global--border--color--default);
+  --pf-v6-c-drawer__panel--PaddingBlockStart: 0;
 }
 
-.etcd-col--keys {
-  width: 380px;
-  min-width: 260px;
+.etcd-tree-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+  border-bottom: 1px solid var(--pf-t--global--border--color--default);
   flex-shrink: 0;
 }
 
-.etcd-col--value {
+.etcd-tree-panel__toggle {
+  padding: var(--pf-t--global--spacer--xs) !important;
+}
+
+.etcd-tree-panel__toolbar {
+  flex-shrink: 0;
+  padding: 0 var(--pf-t--global--spacer--sm) !important;
+}
+
+.etcd-tree-panel__toolbar .pf-v6-c-toolbar {
+  padding: 0;
+}
+
+.etcd-tree-panel__body {
   flex: 1;
-  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--sm) !important;
 }
 
-/* Card within a column: stretch to fill, scroll body */
-.etcd-col > .pf-v6-c-card {
-  display: flex !important;
-  flex-direction: column !important;
-  flex: 1 !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
+.etcd-tree-panel__body .pf-v6-c-tree-view {
+  padding: 0;
+  --pf-v6-c-tree-view__node--indent--base: 2rem;
+  --pf-v6-c-tree-view__node--nested-indent--base: 0.75rem;
+  --pf-v6-c-tree-view__node--PaddingBlockStart: 0.25rem;
+  --pf-v6-c-tree-view__node--PaddingBlockEnd: 0.25rem;
 }
 
-.etcd-col > .pf-v6-c-card > .pf-v6-c-card__title {
-  flex-shrink: 0 !important;
+/* Expand button when tree is collapsed */
+.etcd-tree-expand-btn {
+  position: absolute;
+  left: 0;
+  top: var(--pf-t--global--spacer--sm);
+  z-index: 10;
+  border: 1px solid var(--pf-t--global--border--color--default);
+  border-left: none;
+  border-radius: 0 var(--pf-t--global--border--radius--pill) var(--pf-t--global--border--radius--pill) 0;
+  background: var(--pf-t--global--background--color--primary--default);
+  padding: var(--pf-t--global--spacer--xs) var(--pf-t--global--spacer--sm) !important;
+}
+
+/* Value content area (right side of drawer) */
+.etcd-value-body {
+  overflow-y: auto;
+  position: relative;
+}
+
+.etcd-value-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+}
+
+.etcd-value-content__title {
+  flex-shrink: 0;
+  padding-bottom: var(--pf-t--global--spacer--sm);
+  border-bottom: 1px solid var(--pf-t--global--border--color--default);
+  margin-bottom: var(--pf-t--global--spacer--sm);
+}
+
+.etcd-value-content__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .etcd-key-breadcrumb {
@@ -135,34 +190,32 @@ code {
   vertical-align: baseline;
 }
 
-.etcd-col > .pf-v6-c-card > .pf-v6-c-card__body {
-  flex: 1 !important;
-  min-height: 0 !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-}
-
 /* Scrollbar styling */
-.etcd-col > .pf-v6-c-card > .pf-v6-c-card__body::-webkit-scrollbar {
+.etcd-tree-panel__body::-webkit-scrollbar,
+.etcd-value-content__body::-webkit-scrollbar {
   width: 8px;
 }
 
-.etcd-col > .pf-v6-c-card > .pf-v6-c-card__body::-webkit-scrollbar-track {
+.etcd-tree-panel__body::-webkit-scrollbar-track,
+.etcd-value-content__body::-webkit-scrollbar-track {
   background: var(--pf-t--global--background--color--secondary--default, #f0f0f0);
   border-radius: 4px;
 }
 
-.etcd-col > .pf-v6-c-card > .pf-v6-c-card__body::-webkit-scrollbar-thumb {
+.etcd-tree-panel__body::-webkit-scrollbar-thumb,
+.etcd-value-content__body::-webkit-scrollbar-thumb {
   background: var(--pf-t--global--border--color--default, #c0c0c0);
   border-radius: 4px;
 }
 
-.etcd-col > .pf-v6-c-card > .pf-v6-c-card__body::-webkit-scrollbar-thumb:hover {
+.etcd-tree-panel__body::-webkit-scrollbar-thumb:hover,
+.etcd-value-content__body::-webkit-scrollbar-thumb:hover {
   background: var(--pf-t--global--color--nonstatus--blue--default, #0066cc);
 }
 
 @supports not selector(::-webkit-scrollbar) {
-  .etcd-col > .pf-v6-c-card > .pf-v6-c-card__body {
+  .etcd-tree-panel__body,
+  .etcd-value-content__body {
     scrollbar-width: thin;
     scrollbar-color:
       var(--pf-t--global--border--color--default, #c0c0c0)

@@ -85,6 +85,8 @@ spec:
           imagePullPolicy: IfNotPresent
           command:
             - nginx
+            - -e
+            - /dev/stderr
             - -g
             - daemon off;
             - -c

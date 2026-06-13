@@ -25,7 +25,7 @@ replicaCount: 1
 # @schema
 # Container image settings
 image:
-  repository: localhost/etcd-v3-browser
+  repository: quay.io/rgordill/etcd-v3-browser:latest
   pullPolicy: IfNotPresent
   tag: "latest"
 
@@ -214,13 +214,13 @@ ingress:
     route.openshift.io/termination: edge
     cert-manager.io/cluster-issuer: lab-ca-issuer
   hosts:
-    - host: etcd-browser.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
+    - host: etcd-browser.apps.example.com
       paths:
         - path: /
           pathType: Prefix
   tls:
     - hosts:
-        - etcd-browser.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
+        - etcd-browser.apps.example.com
       secretName: etcd-v3-browser-tls
 
 # @schema
@@ -228,13 +228,13 @@ ingress:
 # additionalProperties: true
 # @schema
 # CPU and memory resource requests and limits
-resources:
-  limits:
-    cpu: 500m
-    memory: 256Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
+# resources:
+#   limits:
+#     cpu: 500m
+#     memory: 256Mi
+#   requests:
+#     cpu: 100m
+#     memory: 128Mi
 
 # @schema
 # type: object
@@ -285,8 +285,10 @@ affinity: {}
 openshiftConsole:
   enabled: false
   pluginName: etcd-v3-browser
-  displayName: etcd v3 Browser
+  displayName: Etcd Browser
   backendBasePath: /
   pluginPort: 9443
   patcherImage: registry.redhat.io/openshift4/ose-cli:latest
-  nginxImage: docker.io/nginxinc/nginx-unprivileged:stable-alpine
+  # Red Hat UBI 9 nginx 1.26 — unprivileged, OpenShift-compatible
+  # https://catalog.redhat.com/en/software/containers/ubi9/nginx-126/678f5851a09b9e2d461ba1d9
+  nginxImage: registry.access.redhat.com/ubi9/nginx-126:latest

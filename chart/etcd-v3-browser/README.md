@@ -50,8 +50,8 @@ helm upgrade my-browser ./chart/etcd-v3-browser \
   --set image.repository=your-registry/etcd-v3-browser \
   --set image.tag=1.0.0 \
   --set ingress.enabled=true \
-  --set ingress.hosts[0].host=etcd-browser.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com \
-  --set ingress.tls[0].hosts[0]=etcd-browser.apps.ocp.sa-iberia.lab.eng.brq2.redhat.com
+  --set ingress.hosts[0].host=etcd-browser.apps.example.com \
+  --set ingress.tls[0].hosts[0]=etcd-browser.apps.example.com
 ```
 
 Ingress uses `ingressClassName: openshift-default` with edge TLS termination
@@ -69,8 +69,9 @@ helm upgrade my-browser ./chart/etcd-v3-browser \
 
 When enabled, the chart also:
 - Creates a `ConsolePlugin` CR named `etcd-v3-browser`
-- Adds an nginx HTTPS sidecar (port 9443) with an OpenShift serving certificate
+- Adds a [Red Hat UBI 9 nginx 1.26](https://catalog.redhat.com/en/software/containers/ubi9/nginx-126/678f5851a09b9e2d461ba1d9) HTTPS sidecar (port 9443) with an OpenShift serving certificate
 - Runs a post-install Job to append the plugin to `consoles.operator.openshift.io/cluster`
+- Runs a post-delete Job on `helm uninstall` to remove the plugin from `consoles.operator.openshift.io/cluster`
 
 The plugin name defaults to `etcd-v3-browser` and must match
 `plugin-manifest.json`. The nginx sidecar serves plugin assets at `/` (mapping to
@@ -121,3 +122,6 @@ helm-schema -n
 ```bash
 helm uninstall my-browser
 ```
+
+When `openshiftConsole.enabled` is true, uninstall also runs a post-delete Job that
+removes the plugin name from `consoles.operator.openshift.io/cluster`.

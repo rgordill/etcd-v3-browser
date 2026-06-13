@@ -74,6 +74,13 @@ Console patcher resource name prefix
 {{- end }}
 
 {{/*
+Console unpatcher job name (post-delete hook)
+*/}}
+{{- define "etcd-v3-browser.consoleUnpatcherName" -}}
+{{- printf "%s-console-unpatcher" (include "etcd-v3-browser.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
 TLS secret name for the OpenShift serving certificate (console plugin HTTPS)
 */}}
 {{- define "etcd-v3-browser.consolePluginTlsSecretName" -}}

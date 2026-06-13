@@ -10,7 +10,6 @@ import {
   TreeViewDataItem,
   Card,
   CardBody,
-  CardTitle,
   CodeBlock,
   CodeBlockCode,
   Spinner,
@@ -52,6 +51,11 @@ import {
   DropEvent,
   ToggleGroup,
   ToggleGroupItem,
+  Drawer,
+  DrawerContent,
+  DrawerContentBody,
+  DrawerPanelContent,
+  DrawerPanelBody,
 } from '@patternfly/react-core';
 import { PemFileField } from './PemFileField';
 import {
@@ -69,6 +73,8 @@ import {
   MoonIcon,
   AdjustIcon,
   UploadIcon,
+  AngleDoubleLeftIcon,
+  AngleDoubleRightIcon,
 } from '@patternfly/react-icons';
 import { SyntaxCodeBlock } from './SyntaxCodeBlock';
 import { CopyButton } from './CopyButton';
@@ -81,6 +87,7 @@ import {
 } from './key-path';
 import { jsonToYaml, parseJsonText } from './value-format';
 import { useTheme, ThemeChoice } from './useTheme';
+import { useConsoleTheme } from './useConsoleTheme';
 import { ThemeContext } from './ThemeContext';
 
 export type FetchFn = (url: string, options?: RequestInit) => Promise<Response>;
@@ -496,7 +503,13 @@ function App({
   apiBase = (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || '',
   fetchFn = window.fetch.bind(window),
 }: AppProps) {
-  const { choice: themeChoice, effective: effectiveTheme, setChoice: setThemeChoice } = useTheme();
+  const standaloneTheme = useTheme(isPlugin);
+  const consoleTheme = useConsoleTheme();
+
+  const effectiveTheme = isPlugin ? consoleTheme : standaloneTheme.effective;
+  const themeChoice = standaloneTheme.choice;
+  const setThemeChoice = standaloneTheme.setChoice;
+
   const etcdLogoUrl = effectiveTheme === 'dark' ? etcdLogoDarkUrl : etcdLogoLightUrl;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [connectionMode, setConnectionMode] = useState<'connect' | 'snapshot'>('connect');
@@ -1200,6 +1213,79 @@ function App({
     </div>
   );
 
+  const [drawerOpen, setDrawerOpen] = useState(() => {
+    try { return localStorage.getItem('etcd-tree-open') !== 'hide'; } catch { return true; }
+  });
+  const [drawerWidth, setDrawerWidth] = useState(() => {
+    try { return localStorage.getItem('etcd-tree-width') || '380px'; } catch { return '380px'; }
+  });
+
+  const toggleDrawer = useCallback(() => {
+    setDrawerOpen((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('etcd-tree-open', next ? 'show' : 'hide'); } catch {}
+      return next;
+    });
+  }, []);
+
+  const handleDrawerResize = useCallback((_e: unknown, width: number) => {
+    const w = `${width}px`;
+    setDrawerWidth(w);
+    try { localStorage.setItem('etcd-tree-width', w); } catch {}
+  }, []);
+
+  const treePanel = (
+    <DrawerPanelContent
+      isResizable
+      id="etcd-tree-panel"
+      minSize="200px"
+      defaultSize={drawerWidth}
+      onResize={handleDrawerResize}
+      className="etcd-tree-panel"
+    >
+      <div className="etcd-tree-panel__header">
+        <Title headingLevel="h3" size="md">Key Browser</Title>
+        <Button
+          variant="plain"
+          aria-label="Collapse tree"
+          onClick={toggleDrawer}
+          className="etcd-tree-panel__toggle"
+        >
+          <AngleDoubleLeftIcon />
+        </Button>
+      </div>
+      <DrawerPanelBody className="etcd-tree-panel__toolbar">
+        {treeToolbar}
+      </DrawerPanelBody>
+      <DrawerPanelBody className="etcd-tree-panel__body">
+        {loading ? (
+          <Flex justifyContent={{ default: 'justifyContentCenter' }} style={{ padding: 'var(--pf-t--global--spacer--lg)' }}>
+            <Spinner size="lg" />
+          </Flex>
+        ) : displayData.length === 0 ? (
+          <EmptyState headingLevel="h4" icon={DatabaseIcon} titleText="No keys found">
+            <EmptyStateBody>
+              {filterText
+                ? 'No keys match your filter.'
+                : 'The etcd cluster appears to be empty.'}
+            </EmptyStateBody>
+          </EmptyState>
+        ) : (
+          <TreeView
+            key={filterText ? 'filtered' : `unfiltered-${treeRevealKey}`}
+            data={displayData}
+            activeItems={activeItems}
+            onSelect={handleSelect}
+            onExpand={handleExpand}
+            hasSelectableNodes
+            hasGuides
+            aria-label="etcd key tree"
+          />
+        )}
+      </DrawerPanelBody>
+    </DrawerPanelContent>
+  );
+
   const browserPanel = (
     <div className="etcd-browser">
       {error && (
@@ -1212,72 +1298,51 @@ function App({
         </div>
       )}
 
-      <div className="etcd-browser__columns">
-        <div className="etcd-col etcd-col--keys">
-          <Card>
-            <CardTitle>Key Browser</CardTitle>
-            <CardBody>
-              {treeToolbar}
-              {loading ? (
-                <Flex justifyContent={{ default: 'justifyContentCenter' }}>
-                  <Spinner size="lg" />
-                </Flex>
-              ) : displayData.length === 0 ? (
-                <EmptyState headingLevel="h4" icon={DatabaseIcon} titleText="No keys found">
-                  <EmptyStateBody>
-                    {filterText
-                      ? 'No keys match your filter.'
-                      : 'The etcd cluster appears to be empty.'}
-                  </EmptyStateBody>
-                </EmptyState>
-              ) : (
-                <TreeView
-                  key={filterText ? 'filtered' : `unfiltered-${treeRevealKey}`}
-                  data={displayData}
-                  activeItems={activeItems}
-                  onSelect={handleSelect}
-                  onExpand={handleExpand}
-                  hasSelectableNodes
-                  hasGuides
-                  aria-label="etcd key tree"
-                />
-              )}
-            </CardBody>
-          </Card>
-        </div>
-
-        <div className="etcd-col etcd-col--value">
-          <Card>
-            <CardTitle>
-              {selectedKey ? (
-                <Flex direction={{ default: 'column' }} gap={{ default: 'gapSm' }}>
-                  <FlexItem>Value</FlexItem>
-                  <FlexItem>
-                    <KeyBreadcrumb keyPath={selectedKey} onNavigate={expandAndRevealPath} />
-                  </FlexItem>
-                </Flex>
-              ) : (
-                'Value'
-              )}
-            </CardTitle>
-            <CardBody>
-              {valueLoading ? (
-                <Flex justifyContent={{ default: 'justifyContentCenter' }}>
-                  <Spinner size="lg" />
-                </Flex>
-              ) : selectedResult ? (
-                <ValueDisplay result={selectedResult} />
-              ) : (
-                <EmptyState headingLevel="h4" icon={KeyIcon} titleText="Select a key">
-                  <EmptyStateBody>
-                    Click on a key in the tree to view its value.
-                  </EmptyStateBody>
-                </EmptyState>
-              )}
-            </CardBody>
-          </Card>
-        </div>
-      </div>
+      <Drawer isExpanded={drawerOpen} isInline position="start" className="etcd-drawer">
+        <DrawerContent panelContent={treePanel}>
+          <DrawerContentBody className="etcd-value-body">
+            {!drawerOpen && (
+              <Button
+                variant="plain"
+                aria-label="Expand tree"
+                onClick={toggleDrawer}
+                className="etcd-tree-expand-btn"
+              >
+                <AngleDoubleRightIcon />
+              </Button>
+            )}
+            <div className="etcd-value-content">
+              <div className="etcd-value-content__title">
+                {selectedKey ? (
+                  <Flex direction={{ default: 'column' }} gap={{ default: 'gapSm' }}>
+                    <FlexItem><Title headingLevel="h3" size="md">Value</Title></FlexItem>
+                    <FlexItem>
+                      <KeyBreadcrumb keyPath={selectedKey} onNavigate={expandAndRevealPath} />
+                    </FlexItem>
+                  </Flex>
+                ) : (
+                  <Title headingLevel="h3" size="md">Value</Title>
+                )}
+              </div>
+              <div className="etcd-value-content__body">
+                {valueLoading ? (
+                  <Flex justifyContent={{ default: 'justifyContentCenter' }} style={{ padding: 'var(--pf-t--global--spacer--lg)' }}>
+                    <Spinner size="lg" />
+                  </Flex>
+                ) : selectedResult ? (
+                  <ValueDisplay result={selectedResult} />
+                ) : (
+                  <EmptyState headingLevel="h4" icon={KeyIcon} titleText="Select a key">
+                    <EmptyStateBody>
+                      Click on a key in the tree to view its value.
+                    </EmptyStateBody>
+                  </EmptyState>
+                )}
+              </div>
+            </div>
+          </DrawerContentBody>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 
