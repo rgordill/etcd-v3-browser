@@ -3,6 +3,7 @@
 const path = require('path');
 const webpack = require('webpack');
 const TerserPlugin = require('terser-webpack-plugin');
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const { ConsoleRemotePlugin } = require('@openshift-console/dynamic-plugin-sdk-webpack');
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -37,6 +38,12 @@ const config = {
       },
       {
         test: /\.(css)$/,
+        exclude: /node_modules\/monaco-editor/,
+        use: ['style-loader', 'css-loader'],
+      },
+      {
+        test: /\.css$/,
+        include: path.resolve(__dirname, 'node_modules/monaco-editor'),
         use: ['style-loader', 'css-loader'],
       },
       {
@@ -55,6 +62,20 @@ const config = {
     ],
   },
   plugins: [
+    new MonacoWebpackPlugin({
+      languages: ['yaml', 'json', 'plaintext'],
+      globalAPI: true,
+      customLanguages: [
+        {
+          label: 'yaml',
+          entry: 'monaco-yaml',
+          worker: {
+            id: 'monaco-yaml/yamlWorker',
+            entry: 'monaco-yaml/yaml.worker',
+          },
+        },
+      ],
+    }),
     new ConsoleRemotePlugin({
       validateSharedModules: false,
       validateExtensionSchema: false,

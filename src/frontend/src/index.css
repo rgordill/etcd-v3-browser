@@ -265,83 +265,21 @@ code {
   color: var(--pf-t--global--color--inverse--100);
 }
 
-/* Collapsible JSON / YAML structure viewer */
-.etcd-structure__toolbar {
-  border-bottom: 1px solid var(--pf-t--global--border--color--default);
+/* PatternFly CodeEditor / Monaco value viewer (OpenShift Console 4.22 style) */
+.etcd-syntax-codeblock {
+  border: 1px solid var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--small);
+  overflow: hidden;
 }
 
-.etcd-structure__line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  min-height: 1.5em;
+.etcd-syntax-codeblock .pf-v6-c-code-editor__header {
+  display: none;
 }
 
-.etcd-structure__block {
-  display: block;
+.etcd-syntax-codeblock .monaco-editor {
+  position: relative;
 }
 
-.etcd-structure__toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  margin-right: 2px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--pf-t--global--text--color--subtle);
-  cursor: pointer;
-  flex-shrink: 0;
-  vertical-align: middle;
-}
-
-.etcd-structure__toggle:hover {
-  color: var(--pf-t--global--text--color--regular);
-}
-
-.etcd-structure__toggle--placeholder {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.etcd-structure__toggle svg {
-  width: 0.75rem;
-  height: 0.75rem;
-}
-
-.etcd-structure__key {
-  color: var(--pf-t--global--color--nonstatus--red--default, #cf222e);
-}
-
-.etcd-structure__string {
-  color: var(--pf-t--global--color--nonstatus--green--default, #116329);
-}
-
-.etcd-structure__number {
-  color: var(--pf-t--global--color--nonstatus--blue--default, #0550ae);
-}
-
-.etcd-structure__boolean {
-  color: var(--pf-t--global--color--nonstatus--purple--default, #8250df);
-}
-
-.etcd-structure__null {
-  color: var(--pf-t--global--text--color--subtle);
-  font-style: italic;
-}
-
-.etcd-structure__punct,
-.etcd-structure__comma {
-  color: var(--pf-t--global--text--color--regular);
-}
-
-.etcd-structure__ellipsis {
-  color: var(--pf-t--global--text--color--subtle);
-  font-style: italic;
-}
-
-.etcd-structure__yaml-dash {
-  color: var(--pf-t--global--text--color--subtle);
+.etcd-syntax-codeblock .pf-v6-c-code-editor__main {
+  border-block-start: none;
 }

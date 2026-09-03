@@ -12,16 +12,15 @@ permissions:
 env:
   REGISTRY: quay.io
   IMAGE_NAME: rgordill/etcd-v3-browser
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   test:
     name: Build & Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: 'npm'
@@ -61,7 +60,7 @@ jobs:
             src/ container/ chart/ docs/ README.md LICENSE NOTICE
 
       - name: Upload tarball artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-tarball
           path: etcd-v3-browser-*.tar.gz
@@ -71,7 +70,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Extract version from tag
         id: version
@@ -104,12 +103,12 @@ jobs:
     needs: [test, publish-image]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Download tarball artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: release-tarball
 

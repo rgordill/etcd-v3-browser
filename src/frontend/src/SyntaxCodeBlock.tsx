@@ -1,16 +1,18 @@
-import React, { useMemo } from 'react';
-import { Highlight, themes, Language } from 'prism-react-renderer';
-import { CodeBlock, CodeBlockCode } from '@patternfly/react-core';
+import React, { useCallback, useMemo } from 'react';
+import { loader } from '@monaco-editor/react';
+import { CodeEditor, Language, EditorDidMount } from '@patternfly/react-code-editor';
+import * as monaco from 'monaco-editor';
 import { useEffectiveTheme } from './ThemeContext';
-import { CollapsibleStructure } from './CollapsibleStructure';
-import { tryParseStructure } from './structure-parse';
+import { defaultEditorOptions, registerYamlInMonaco } from './monaco-editor-utils';
+
+loader.config({ monaco });
 
 export type SyntaxLanguage = 'json' | 'yaml' | 'text';
 
-const MONO: React.CSSProperties = {
-  fontFamily: 'var(--pf-t--global--font--family--mono)',
-  fontSize: '0.8125rem',
-  lineHeight: 1.5,
+const LANGUAGE_MAP: Record<SyntaxLanguage, Language> = {
+  json: Language.json,
+  yaml: Language.yaml,
+  text: Language.plaintext,
 };
 
 interface SyntaxCodeBlockProps {
@@ -19,60 +21,47 @@ interface SyntaxCodeBlockProps {
 }
 
 /**
- * PatternFly CodeBlock with collapsible tree for JSON/YAML, or Prism highlighting as fallback.
- * Automatically picks a light or dark Prism theme to match the app theme.
+ * Read-only PatternFly CodeEditor with Monaco, matching OpenShift Console 4.22:
+ * monaco-yaml syntax highlighting, folding ranges, and line numbers.
  */
 export function SyntaxCodeBlock({ code, language }: SyntaxCodeBlockProps) {
   const effectiveTheme = useEffectiveTheme();
 
-  const parsedStructure = useMemo(() => {
-    if (language === 'json' || language === 'yaml') {
-      return tryParseStructure(code, language);
-    }
-    return null;
-  }, [code, language]);
+  const editorOptions = useMemo(
+    () => ({
+      ...defaultEditorOptions,
+      readOnly: true,
+    }),
+    [],
+  );
 
-  if ((language === 'json' || language === 'yaml') && parsedStructure !== null) {
-    return <CollapsibleStructure value={parsedStructure} variant={language} />;
-  }
-
-  if (language === 'text' || !code) {
-    return (
-      <CodeBlock>
-        <CodeBlockCode style={MONO}>{code}</CodeBlockCode>
-      </CodeBlock>
-    );
-  }
-
-  const prismLang = language as Language;
-  const prismTheme = effectiveTheme === 'dark' ? themes.vsDark : themes.github;
+  const onEditorDidMount: EditorDidMount = useCallback(
+    (editor, monacoInstance) => {
+      editor.getModel()?.updateOptions({ tabSize: 2 });
+      if (language === 'yaml') {
+        registerYamlInMonaco(monacoInstance);
+      }
+      if (language === 'json') {
+        editor.getAction('editor.action.formatDocument')?.run();
+      }
+      editor.layout();
+    },
+    [language],
+  );
 
   return (
-    <Highlight theme={prismTheme} code={code} language={prismLang}>
-      {({ className, style, tokens, getLineProps, getTokenProps }) => (
-        <CodeBlock className="etcd-syntax-codeblock">
-          <CodeBlockCode
-            className={className}
-            style={{
-              ...style,
-              ...MONO,
-              background: 'var(--pf-t--global--background--color--secondary--default)',
-              padding: 'var(--pf-t--global--spacer--sm)',
-              overflow: 'auto',
-            }}
-          >
-            <pre style={{ margin: 0, background: 'transparent' }}>
-              {tokens.map((line, lineIndex) => (
-                <div key={lineIndex} {...getLineProps({ line })}>
-                  {line.map((token, tokenIndex) => (
-                    <span key={tokenIndex} {...getTokenProps({ token })} />
-                  ))}
-                </div>
-              ))}
-            </pre>
-          </CodeBlockCode>
-        </CodeBlock>
-      )}
-    </Highlight>
+    <CodeEditor
+      className="etcd-syntax-codeblock"
+      code={code}
+      language={LANGUAGE_MAP[language]}
+      isReadOnly
+      isLineNumbersVisible
+      isDarkTheme={effectiveTheme === 'dark'}
+      isHeaderPlain
+      isLanguageLabelVisible={false}
+      height="sizeToFit"
+      options={editorOptions}
+      onEditorDidMount={onEditorDidMount}
+    />
   );
 }
