@@ -31,7 +31,7 @@ app.get('/readyz', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.get('*', (_req, res) => {
+app.get('{*path}', (_req, res) => {
   res.sendFile(path.join(config.staticDir, 'index.html'));
 });
 

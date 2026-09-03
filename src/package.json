@@ -21,7 +21,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "etcd3": "^1.1.2",
-    "express": "^4.21.2",
+    "express": "^5.2.1",
     "js-yaml": "^4.2.0",
     "multer": "^2.1.1",
     "protobufjs": "^8.5.0"
@@ -34,7 +34,7 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "jest-junit": "^16.0.0",
+    "jest-junit": "^17.0.0",
     "supertest": "^7.1.0"
   }
 }

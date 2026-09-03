@@ -28,11 +28,9 @@ jobs:
       - name: Audit backend dependencies
         id: backend-audit
         working-directory: src
-        continue-on-error: true
         run: |
-          OUTPUT=$(npm audit --production 2>&1)
+          OUTPUT=$(npm audit --production 2>&1) || true
           echo "$OUTPUT"
-          EXIT_CODE=$?
           {
             echo "OUTPUT<<EOF"
             echo "$OUTPUT"
@@ -51,11 +49,9 @@ jobs:
       - name: Audit frontend dependencies
         id: frontend-audit
         working-directory: src/frontend
-        continue-on-error: true
         run: |
-          OUTPUT=$(npm audit --production 2>&1)
+          OUTPUT=$(npm audit --production 2>&1) || true
           echo "$OUTPUT"
-          EXIT_CODE=$?
           {
             echo "OUTPUT<<EOF"
             echo "$OUTPUT"

@@ -76,7 +76,7 @@
     "postcss": "^8.5.15",
     "uuid": "^11.1.1",
     "@tootallnate/once": "^2.0.1",
-    "webpack-dev-server": "^4.15.2"
+    "qs": "^6.16.0"
   },
   "devDependencies": {
     "@openshift-console/dynamic-plugin-sdk": "4.22.0",
