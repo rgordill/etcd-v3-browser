@@ -90,6 +90,11 @@ jobs:
       - name: Create vulnerability issue
         if: steps.check.outputs.FOUND_VULNS == 'true'
         uses: actions/github-script@v8
+        env:
+          BACKEND_OUTPUT: ${{ steps.backend-audit.outputs.OUTPUT }}
+          FRONTEND_OUTPUT: ${{ steps.frontend-audit.outputs.OUTPUT }}
+          BACKEND_HAS_VULNS: ${{ steps.backend-audit.outputs.HAS_VULNS }}
+          FRONTEND_HAS_VULNS: ${{ steps.frontend-audit.outputs.HAS_VULNS }}
         with:
           script: |
             const today = new Date().toISOString().split('T')[0];
@@ -115,13 +120,13 @@ jobs:
             body += `Vulnerabilities were detected during the daily security audit.\n`;
             body += `The **upgrade-test** workflow has been triggered automatically.\n\n`;
 
-            const backendOutput = `${{ steps.backend-audit.outputs.OUTPUT }}`;
-            const frontendOutput = `${{ steps.frontend-audit.outputs.OUTPUT }}`;
+            const backendOutput = process.env.BACKEND_OUTPUT || '';
+            const frontendOutput = process.env.FRONTEND_OUTPUT || '';
 
-            if ('${{ steps.backend-audit.outputs.HAS_VULNS }}' === 'true') {
+            if (process.env.BACKEND_HAS_VULNS === 'true') {
               body += `### Backend (src/)\n\n\`\`\`\n${backendOutput.slice(-2000)}\n\`\`\`\n\n`;
             }
-            if ('${{ steps.frontend-audit.outputs.HAS_VULNS }}' === 'true') {
+            if (process.env.FRONTEND_HAS_VULNS === 'true') {
               body += `### Frontend (src/frontend/)\n\n\`\`\`\n${frontendOutput.slice(-2000)}\n\`\`\`\n\n`;
             }
 
